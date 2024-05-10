@@ -1,4 +1,4 @@
 # TDL
-# GRUPO
-# COMO USAR
-# COMO TESTEAR
+# Grupo
+# Como usar
+# Como testear
