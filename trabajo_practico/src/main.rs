@@ -1,7 +1,7 @@
-use trabajo_practico::mapa::Mapa;
+use trabajo_practico::juego::Juego;
 
 
 fn main() {
-    let mapa = Mapa::new();
-    mapa.imprimir_tablero()
+    let mut juego = Juego::new(2);
+    juego.iniciar_juego();
 }
