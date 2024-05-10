@@ -1,5 +1,5 @@
 use std::io;
-use crate::{acciones::{Accion, Ataque, Movimiento}, barco};
+use crate::acciones::{Accion, Ataque, Movimiento};
 
 const ATAQ: &str = "atacar";
 const MOV: &str = "mover";
@@ -27,14 +27,14 @@ impl Jugador{
     }
 
     fn atacar(&self) -> Accion {
-        let (barco_seleccionado, cordenadas_atacadas) = self.pedir_instrucciones(ATAQ);
+        let (_barco_seleccionado, _cordenadas_atacadas) = self.pedir_instrucciones(ATAQ);
         let id_barco = 0;
         let cordenadas_ataque = (0,0);
         return Accion::Atacar(Ataque { jugador_id: self.id, id_barco, cordenadas_ataque })
     }
 
     fn moverse(&self) -> Accion {
-        let (barco_seleccionado, cordenadas_atacadas) = self.pedir_instrucciones(MOV);
+        let (_barco_seleccionado, _cordenadas_atacadas) = self.pedir_instrucciones(MOV);
         let id_barco = 0;
         let cordenadas_origen = (0,0);
         let cordenadas_destino = (0,1);
