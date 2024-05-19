@@ -1,5 +1,5 @@
 use std::io;
-use crate::acciones::{Accion, Ataque, Movimiento};
+use crate::{acciones::{Accion, Ataque, Movimiento}, mapa::Mapa};
 
 const ATAQ: &str = "atacar";
 const MOV: &str = "mover";
@@ -13,7 +13,9 @@ impl Jugador{
         Jugador { id }
     }
 
-    pub fn turno(&mut self) -> Accion {
+    pub fn turno(&mut self, tablero: &Mapa) -> Accion {
+        tablero.imprimir_tablero();
+
         let mut accion = String::new();
         io::stdin().read_line(&mut accion)
             .expect("Error al leer la entrada");

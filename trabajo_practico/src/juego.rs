@@ -1,4 +1,4 @@
-use crate::{custom_error::CustomError, mapa::Mapa, jugador::Jugador };
+use crate::{acciones::Accion, custom_error::CustomError, jugador::Jugador, mapa::Mapa };
 
 pub struct Juego{
     pub mapa: Mapa,
@@ -25,8 +25,8 @@ impl Juego{
             println!("Turno del jugador {}", jugador_actual.id);
             Self::imprimir_acciones();
 
-            jugador_actual.turno();
-            self.mapa.imprimir_tablero();
+            self.mapa.modificar(jugador_actual.turno(&self.mapa));
+
 
             self.turno = (self.turno + 1) % self.jugadores.len();
         }
