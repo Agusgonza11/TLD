@@ -1,0 +1,12 @@
+/home/agus/Documentos/teoria del algoritmos/TLD/trabajo_practico/target/debug/deps/getrandom-d95ef13616a38e53.rmeta: /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/lib.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/error.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/util.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/error_impls.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/util_libc.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/use_file.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/lazy.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/linux_android_with_fallback.rs
+
+/home/agus/Documentos/teoria del algoritmos/TLD/trabajo_practico/target/debug/deps/getrandom-d95ef13616a38e53.d: /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/lib.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/error.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/util.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/error_impls.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/util_libc.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/use_file.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/lazy.rs /home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/linux_android_with_fallback.rs
+
+/home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/lib.rs:
+/home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/error.rs:
+/home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/util.rs:
+/home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/error_impls.rs:
+/home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/util_libc.rs:
+/home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/use_file.rs:
+/home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/lazy.rs:
+/home/agus/.cargo/registry/src/github.com-1ecc6299db9ec823/getrandom-0.2.15/src/linux_android_with_fallback.rs:

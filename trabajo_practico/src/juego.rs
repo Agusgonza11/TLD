@@ -8,17 +8,17 @@ pub struct Juego{
 
 impl Juego{
     pub fn new(numero_jugadores: usize) -> Juego {
-        let mapa = Mapa::new();
+        let mut mapa = Mapa::new();
         let mut jugadores = Vec::new();
         for t in 1..=numero_jugadores{
-            jugadores.push(Jugador::new(t));
+            jugadores.push(Jugador::new(t, &mut mapa));
         }
         let turno = 0;
         Juego { mapa, jugadores, turno }
     }
 
     pub fn iniciar_juego(&mut self) -> Result<(),CustomError>{
-        self.mapa.imprimir_tablero();
+        //self.mapa.imprimir_tablero();
 
         while !self.finalizo() {
             let jugador_actual = &mut self.jugadores[self.turno];

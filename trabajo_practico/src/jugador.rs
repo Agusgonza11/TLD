@@ -1,20 +1,24 @@
 use std::io;
-use crate::{acciones::{Accion, Ataque, Movimiento}, mapa::Mapa};
+use crate::{acciones::{Accion, Ataque, Movimiento}, barco::Barco, mapa::Mapa};
 
 const ATAQ: &str = "atacar";
 const MOV: &str = "mover";
 
 pub struct Jugador{
-    pub id: usize
+    pub id: usize,
+    pub barcos: Vec<Barco>
 }
 
 impl Jugador{
-    pub fn new(id: usize) -> Jugador {
-        Jugador { id }
+    pub fn new(id: usize, mapa: &mut Mapa) -> Jugador {
+        let mut barcos = Vec::new();
+        let posicion_libre = mapa.obtener_posicion_libre(id.to_string());
+        barcos.push(Barco::new("basico".to_string(), 1, posicion_libre));
+        Jugador { id, barcos }
     }
 
     pub fn turno(&mut self, tablero: &Mapa) -> Accion {
-        tablero.imprimir_tablero();
+        tablero.imprimir_tablero(self.id.to_string());
 
         let mut accion = String::new();
         io::stdin().read_line(&mut accion)
@@ -45,7 +49,7 @@ impl Jugador{
 
     fn pedir_instrucciones(&self, accion: &str) -> (String, String) {
         let mut barco_seleccionado = String::new();
-        println!("Elige un barco para {}: ", accion);
+        println!("Elige un barco para {}: {:?}", accion, self.barcos);
         io::stdin().read_line(&mut barco_seleccionado)
             .expect("Error al leer la entrada");
         let mut movimiento_seleccionado = String::new();
@@ -54,4 +58,13 @@ impl Jugador{
             .expect("Error al leer la entrada");
         return (barco_seleccionado, movimiento_seleccionado)
     }
+
+    fn pedir_movimiento(&self) {
+
+    }
+
+    fn pedir_ataque(&self) {
+        
+    }
+
 }
