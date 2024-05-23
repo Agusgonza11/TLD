@@ -1,6 +1,3 @@
-use std::fmt::{self, Debug};
-
-
 #[derive(Debug)]
 pub struct Barco {
     pub nombre: String,

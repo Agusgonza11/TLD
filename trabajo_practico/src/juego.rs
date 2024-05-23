@@ -1,4 +1,4 @@
-use crate::{acciones::Accion, custom_error::CustomError, jugador::Jugador, mapa::Mapa };
+use crate::{custom_error::CustomError, jugador::Jugador, mapa::Mapa };
 
 pub struct Juego{
     pub mapa: Mapa,

@@ -1,5 +1,5 @@
 use crate::{acciones::Accion, flota::Flota};
-use ndarray::{Array2, s};
+use ndarray::Array2;
 use rand::Rng;
 
 
@@ -20,20 +20,6 @@ impl Mapa {
             self.tablero[[row, col]] = ch;
         } else {
             println!("Index out of bounds!");
-        }
-    }
-
-    fn set_random(&mut self, ch: char) {
-        let mut rng = rand::thread_rng();
-        let (nrows, ncols) = (self.tablero.nrows(), self.tablero.ncols());
-        let mut fil = 0;
-        let mut col = 0;
-        loop {
-            let fil = rng.gen_range(0..nrows);
-            let col = rng.gen_range(0..ncols);
-            if self.tablero[[fil, col]] == '.' {
-                break;
-            }
         }
     }
 
