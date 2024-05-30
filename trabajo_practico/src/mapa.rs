@@ -4,18 +4,37 @@ use rand::Rng;
 
 
 #[derive(Clone)]
+
+/// Estructura que representa el mapa del juego
 pub struct Mapa {
     pub tablero: Array2<char>,
     pub flotas: Vec<Flota>,
 }
 
 impl Mapa {
+    /// Función que crea un nuevo mapa
+    /// 
+    /// # Returns
+    /// 
+    /// `Mapa` - Mapa creado
     pub fn new() -> Mapa {
         let tablero = Array2::from_elem((10, 10), '.');
         let flotas = Vec::new();
         Mapa { tablero, flotas }
     }
-
+    /// Función que establece un valor en una posición del tablero
+    /// 
+    /// # Args
+    /// 
+    /// `row` - Fila en la que se encuentra la posición
+    /// 
+    /// `col` - Columna en la que se encuentra la posición
+    /// 
+    /// `ch` - Caracter que se establecerá en la posición
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     fn set(&mut self, row: usize, col: usize, ch: char) {
         if row < self.tablero.nrows() && col < self.tablero.ncols() {
             self.tablero[[row, col]] = ch;
@@ -23,7 +42,15 @@ impl Mapa {
             println!("index error");
         }
     }
-
+    /// Función que obtiene una posición libre en el tablero
+    /// 
+    /// # Args
+    /// 
+    /// `id` - Identificador del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `(i32, i32)` - Coordenadas de la posición libre
     pub fn obtener_posicion_libre(&mut self, id: String) -> (i32, i32) {
         let mut rng = rand::thread_rng();
         let (nrows, ncols) = (self.tablero.nrows(), self.tablero.ncols());
@@ -44,7 +71,15 @@ impl Mapa {
 
         (fil_i32, col_i32)
     }
-
+    /// Función que imprime el tablero
+    /// 
+    /// # Args
+    /// 
+    /// `id` - Identificador del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     pub fn imprimir_tablero(&self, id: String) {
         let jugador: char = id.chars().next().unwrap();
         for row in self.tablero.rows() {
@@ -58,7 +93,19 @@ impl Mapa {
             println!();
         }
     }
-
+    /// Funcion que actualiza la posición de un barco en el tablero
+    /// 
+    /// # Args
+    /// 
+    /// `coordenadas_origen` - Coordenadas de origen del barco
+    /// 
+    /// `coordenadas_destino` - Coordenadas de destino del barco
+    /// 
+    /// `id` - Identificador del barco
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     pub fn actualizar_posicion_barco(&mut self, coordenadas_origen: (i32, i32), coordenadas_destino: (i32, i32), id: char) {
         let (x_origen, y_origen) = coordenadas_origen;
         let (x_destino, y_destino) = coordenadas_destino;
@@ -71,11 +118,79 @@ impl Mapa {
             self.tablero[[y_destino as usize, x_destino as usize]] = id;
         }
     }
-
+    /// Función que marca una posición como hundida en el tablero
+    /// 
+    /// # Args
+    /// 
+    /// `coordenadas` - Coordenadas de la posición a marcar
+    /// 
+    /// # Returns
+    /// 
+    /// 
     pub fn marcar_hundido(&mut self, coordenadas: (i32, i32)) {
         let (x, y) = coordenadas;
         if x >= 0 && x < self.tablero.ncols() as i32 && y >= 0 && y < self.tablero.nrows() as i32 {
             self.tablero[[y as usize, x as usize]] = 'X';
         }
+    }
+    
+    /// Función que obtiene las coordenadas contiguas a una posición
+    /// 
+    /// # Args
+    /// 
+    /// `coordenada_destino` - Coordenadas de la posición
+    /// 
+    /// `tamaño_barco` - Tamaño del barco
+    /// 
+    /// # Returns
+    /// 
+    /// `Vec<(i32, i32)>` - Coordenadas contiguas
+    pub fn obtener_coordenadas_contiguas(&self, coordenada_destino: (i32, i32), tamano_barco: usize) -> Vec<(i32, i32)> {
+        let mut coordenadas_contiguas = Vec::new();
+        let (x, y) = coordenada_destino;
+
+        if self.es_coordenada_vacia(coordenada_destino) {
+            coordenadas_contiguas.push((x, y));
+
+            for i in 1..tamano_barco {
+                let coordenada_horizontal = (x + i as i32, y);
+                if self.es_coordenada_vacia(coordenada_horizontal) {
+                    coordenadas_contiguas.push(coordenada_horizontal);
+                } else {
+                    coordenadas_contiguas.clear();
+                    break;
+                }
+            }
+
+            if coordenadas_contiguas.len() == tamano_barco {
+                for i in 1..tamano_barco {
+                    let coordenada_vertical = (x, y + i as i32);
+                    if self.es_coordenada_vacia(coordenada_vertical) {
+                        coordenadas_contiguas.push(coordenada_vertical);
+                    } else {
+                        coordenadas_contiguas.clear();
+                        break;
+                    }
+                }
+            }
+        }
+
+        coordenadas_contiguas
+    }
+    /// Función que verifica si una coordenada está vacía
+    /// 
+    /// # Args
+    /// 
+    /// `coordenada` - Coordenada a verificar
+    /// 
+    /// # Returns
+    /// 
+    /// `bool` - Verdadero si la coordenada está vacía, falso en caso contrario
+    pub fn es_coordenada_vacia(&self, coordenada: (i32, i32)) -> bool {
+        let (x, y) = coordenada;
+        if x >= 0 && y >= 0 && x < self.tablero.ncols() as i32 && y < self.tablero.nrows() as i32 {
+            return self.tablero[[y as usize, x as usize]] == '.';
+        }
+        false
     }
 }

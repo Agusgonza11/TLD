@@ -1,16 +1,14 @@
 use std::io;
-use std::io::Write; // Para poder usar flush()
+use std::io::Write;
 use trabajo_practico::juego::Juego;
 
 fn main() {
     print!("Elige el número de jugadores: ");
     io::stdout().flush().expect("Error");
 
-    // Leer la entrada del usuario
     let mut entrada = String::new();
     io::stdin().read_line(&mut entrada).expect("Error");
 
-    // Convertir la entrada a un número
     let num_jugadores: usize = match entrada.trim().parse() {
         Ok(n) => n,
         Err(_) => {
