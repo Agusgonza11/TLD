@@ -49,7 +49,7 @@ impl Juego {
             println!("Turno del jugador {}", jugador_actual.id);
             Self::imprimir_acciones();
 
-            let accion = jugador_actual.turno(&self.mapa);
+            let accion = jugador_actual.turno();
             match accion {
                 Accion::Moverse(movimiento) => {
                     Self::procesar_movimiento(movimiento, &mut self.jugadores);
