@@ -3,8 +3,7 @@ use crate::{
 };
 use std::io::{self, Write};
 
-const ATAQ: &str = "atacar";
-const MOV: &str = "mover";
+use crate::constantes::{ATAQ, MOV};
 
 #[derive(Clone)]
 pub struct Jugador {
@@ -18,7 +17,7 @@ impl Jugador {
         let mut barcos = Vec::new();
         let mut id_actual = 0;
 
-        let tamaños_barcos = vec![1, 1, 3, 3, 5, 5];
+        let tamaños_barcos = vec![1, 1];
 
         for tamaño in tamaños_barcos {
             let posicion_libre = mapa.obtener_posicion_libre(id.to_string());
@@ -135,11 +134,13 @@ impl Jugador {
         Accion::Tienda(self.puntos)
     }
 
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32),mapa:&mut Mapa) {
-        let mut barcos_golpeados = 0;
+    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32), mapa: &mut Mapa) {
+        let mut barcos_golpeados = false;
+        let mut barcos_hundidos = Vec::new();
+
         for barco in &mut self.barcos {
             if barco.posicion == coordenadas_ataque {
-                barcos_golpeados += 1;
+                barcos_golpeados = true;
                 match barco.estado {
                     EstadoBarco::Sano => {
                         println!("Le pegaste a un barco");
@@ -148,29 +149,27 @@ impl Jugador {
                             barco.estado = EstadoBarco::Hundido;
                             println!("El barco ha sido hundido");
                             println!("Ganaste 15 puntos");
-                            self.puntos += 5;
-                            mapa.marcar_hundido(barco.posicion);
-
+                            self.puntos += 15;
+                            barcos_hundidos.push(barco.posicion);
                         } else {
                             barco.estado = EstadoBarco::Golpeado;
-                            print!("Ganaste 5 puntos");
+                            println!("Ganaste 5 puntos");
                             self.puntos += 5;
-
-                            
                         }
                     }
                     EstadoBarco::Golpeado => {
                         println!("Le pegaste a un barco de nuevo");
                         barco.tamaño -= 1;
-                 
                         if barco.tamaño == 0 {
+                            barco.estado = EstadoBarco::Hundido;
                             println!("El barco ha sido hundido");
                             println!("Ganaste 10 puntos");
-                            barco.estado = EstadoBarco::Hundido;
                             self.puntos += 10;
+                            barcos_hundidos.push(barco.posicion);
+                        } else {
+                            println!("Ganaste 5 puntos");
+                            self.puntos += 5;
                         }
-                        self.puntos += 5;
-                        println!("Ganaste 5 puntos");
                     }
                     EstadoBarco::Hundido => {
                         println!("El barco ya ha sido hundido");
@@ -178,8 +177,16 @@ impl Jugador {
                 }
             }
         }
-        if barcos_golpeados == 0{
-            println!("No le pegaste a nada burro irrecuperable");
-    }
+
+        self.barcos.retain(|barco| barco.estado != EstadoBarco::Hundido);
+
+        for coordenadas in barcos_hundidos {
+            mapa.marcar_hundido(coordenadas);
+        }
+
+        if !barcos_golpeados {
+            println!("No le pegaste a nada, burro irrecuperable.");
+        }
+    
     }
 }

@@ -17,3 +17,5 @@ pub mod movimiento;
 pub mod ataque;
 
 pub mod estado_barco;
+
+pub mod constantes;
