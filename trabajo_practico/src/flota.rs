@@ -1,5 +1,5 @@
 use crate::barco::Barco;
-
+#[derive(Debug, Clone)]
 pub struct Flota {
     pub barcos: Vec<Barco>,
 }
@@ -9,8 +9,8 @@ impl Flota {
         Flota { barcos: Vec::new() }
     }
 
-    pub fn agregar_barco(&mut self, nombre: String, tamaño: usize, posición: (usize, usize)) {
-        let nuevo_barco = Barco::new(nombre, tamaño, posición);
+    pub fn agregar_barco(&mut self, id: usize, tamaño: usize, posición: (i32, i32)) {
+        let nuevo_barco = Barco::new(id, tamaño, posición);
         self.barcos.push(nuevo_barco);
     }
 }
