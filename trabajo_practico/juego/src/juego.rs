@@ -1,9 +1,9 @@
-use crate::{
-    accion::Accion, custom_error::CustomError, jugador::Jugador, mapa::Mapa, movimiento::Movimiento,
-};
+use acciones::{accion::Accion, movimiento::Movimiento};
+use libreria::custom_error::CustomError;
 
-#[derive(Clone)]
-/// Estructura que representa el juego
+use crate::{jugador::Jugador, mapa::Mapa};
+
+
 pub struct Juego {
     pub mapa: Mapa,
     pub jugadores: Vec<Jugador>,
@@ -55,7 +55,7 @@ impl Juego {
                     Self::procesar_movimiento(movimiento, &mut self.jugadores);
                 }
                 Accion::Atacar(ataque) => {
-                    Self::procesar_ataque(ataque.cordenadas_ataque, ataque.jugador_id, &mut self.jugadores, &mut self.mapa);
+                    Self::procesar_ataque(ataque.cordenadas_ataque, ataque.jugador_id, &mut self.jugadores);
                 }
                 Accion::Saltar => {
                     println!("Jugador {} salta su turno.", jugador_actual.id);
@@ -122,9 +122,11 @@ impl Juego {
             if jugador.id == movimiento.jugador_id {
                 for barco in &mut jugador.barcos {
                     if barco.id == movimiento.id_barco {
-                        let nuevas_posiciones = movimiento.cordenadas_destino.clone(); 
-                        barco.posiciones = nuevas_posiciones;
+                        let nuevas_posiciones = movimiento.cordenadas_destino.clone();
+                        let posicion_inicial = barco.posiciones.clone();
+                        barco.posiciones = nuevas_posiciones.clone();
                         println!("Barco {} del jugador {} se ha movido a {:?}", barco.id, jugador.id, barco.posiciones);
+                        jugador.mapa.actualizar_posicion_barco(&posicion_inicial, &nuevas_posiciones, jugador.id);
                         break;
                     }
                 }
@@ -146,10 +148,19 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador con el ataque procesado
-    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_id: usize, jugadores: &mut Vec<Jugador>, mapa: &mut Mapa) {
+    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_id: usize, jugadores: &mut Vec<Jugador>) {
+        let mut puntos_ganados = 0;
         for jugador in jugadores.iter_mut() {
+            let mut jugador_atacante = jugador.clone();
             if jugador.id != jugador_id {
-                jugador.procesar_ataque(coordenadas_ataque, mapa);
+                let puntos = jugador.procesar_ataque(coordenadas_ataque, &mut jugador_atacante.mapa);
+                puntos_ganados += puntos;
+            }
+
+        }
+        for jugador in jugadores.iter_mut(){
+            if jugador.id == jugador_id {
+                jugador.puntos += puntos_ganados;
             }
         }
     }
