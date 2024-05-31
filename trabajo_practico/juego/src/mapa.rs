@@ -142,7 +142,7 @@ impl Mapa {
         }
     }
     
-    /// Función que obtiene las coordenadas contiguas a una posición
+    /// Función que obtiene las coordenadas contiguas a una posicion dada
     /// 
     /// # Args
     /// 
@@ -185,6 +185,45 @@ impl Mapa {
 
         coordenadas_contiguas
     }
+    /// Función que obtiene posiciones libres contiguas en el tablero
+    /// 
+    /// # Args
+    /// 
+    /// `id` - Identificador del jugador
+    /// 
+    /// `tamaño` - Tamaño del barco
+    /// 
+    /// # Returns
+    /// 
+    /// `Vec<(i32, i32)>` - Posiciones libres contiguas
+    pub fn obtener_posiciones_libres_contiguas(&mut self, id: String, tamaño: usize) -> Vec<(i32, i32)> {
+        let mut rng = rand::thread_rng();
+        let (nrows, ncols) = (self.tablero.nrows(), self.tablero.ncols());
+        let jugador: char = id.chars().next().unwrap();
+    
+        loop {
+            let fil = rng.gen_range(0..nrows) as i32;
+            let col = rng.gen_range(0..ncols) as i32;
+    
+            let mut posiciones = Vec::new();
+            for i in 0..tamaño {
+                let coord = (col + i as i32, fil);
+                if self.es_coordenada_vacia(coord) {
+                    posiciones.push(coord);
+                } else {
+                    break;
+                }
+            }
+    
+            if posiciones.len() == tamaño {
+                for &(x, y) in &posiciones {
+                    self.tablero[[y as usize, x as usize]] = jugador;
+                }
+                return posiciones;
+            }
+        }
+    }
+    
     /// Función que verifica si una coordenada está vacía
     /// 
     /// # Args
@@ -201,4 +240,5 @@ impl Mapa {
         }
         false
     }
+    
 }

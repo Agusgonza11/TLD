@@ -3,7 +3,7 @@ use barcos::{barco::Barco, estado_barco::EstadoBarco};
 use libreria::constantes::{ATAQ, MOV};
 
 use crate:: mapa::Mapa  ;
-use std::io::{self, Write};
+use std::{io::{self, Write}, vec};
 
 
 #[derive(Clone)]
@@ -31,13 +31,12 @@ impl Jugador {
         let mut barcos = Vec::new();
         let mut id_actual = 0;
 
-        let tamaños_barcos = vec![3];
-
+        let tamaños_barcos: Vec<usize> = vec![5,4,3];
         for tamaño in tamaños_barcos {
-            let posicion_libre = mapa.obtener_posicion_libre(id.to_string());
+            let vec_posiciones = mapa.obtener_posiciones_libres_contiguas(id.to_string(), tamaño);
             let id_barco = id_actual;
             id_actual += 1;
-            barcos.push(Barco::new(id_barco, tamaño, posicion_libre));
+            barcos.push(Barco::new(id_barco, tamaño, vec_posiciones));
         }
 
         Jugador {
@@ -63,7 +62,7 @@ impl Jugador {
         loop {
             let mut accion = String::new();
             println!("Puntos: {}", self.puntos);
-            println!("Elige una acción (m: moverse, a: atacar, t: abrir la tienda, s:saltar): ");
+            println!("Elige una accion (m: moverse, a: atacar, t: abrir la tienda, s:saltar): ");
             io::stdin()
                 .read_line(&mut accion)
                 .expect("Error al leer la entrada");
@@ -73,7 +72,7 @@ impl Jugador {
                 "a" => return self.atacar(),
                 "t" => return self.abrir_tienda(),
                 "s" => return Accion::Saltar,
-                _ => println!("Error en la accion. Por favor, elige una acción valida (m, a, t, s)."),
+                _ => println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s)."),
             }
         }
     }
@@ -147,14 +146,14 @@ impl Jugador {
     fn pedir_instrucciones(&self, accion: &str) -> (Barco, (i32, i32)) {
         println!("Elige un barco para {}:", accion);
         for (i, barco) in self.barcos.iter().enumerate() {
-            println!("{}: ID: {}, Posición: {:?}", i, barco.id, barco.posiciones);
+            println!("{}: ID: {}, Posicion: {:?}", i, barco.id, barco.posiciones);
         }
 
         let mut barco_seleccionado = String::new();
-        io::stdout().flush().expect("Error al limpiar stdout");
+        io::stdout().flush().expect("Error");
         io::stdin()
             .read_line(&mut barco_seleccionado)
-            .expect("Error al leer la entrada");
+            .expect("Error");
         let barco_seleccionado: usize = match barco_seleccionado.trim().parse() {
             Ok(numero) => numero,
             Err(_) => {
@@ -232,6 +231,7 @@ impl Jugador {
                     println!("Ganaste 15 puntos");
                     puntos += 15;
                     barcos_hundidos.push(coordenadas_ataque);
+
                 } else {
                     if barco.estado == EstadoBarco::Sano {
                         barco.estado = EstadoBarco::Golpeado;
@@ -257,4 +257,5 @@ impl Jugador {
         }
         puntos
     }
+    
 }

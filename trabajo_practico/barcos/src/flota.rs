@@ -9,8 +9,8 @@ impl Flota {
         Flota { barcos: Vec::new() }
     }
 
-    pub fn agregar_barco(&mut self, id: usize, tamaño: usize, posición: (i32, i32)) {
-        let nuevo_barco = Barco::new(id, tamaño, posición);
+    pub fn agregar_barco(&mut self, id: usize, tamaño: usize, posiciones: Vec<(i32, i32)>) {
+        let nuevo_barco = Barco::new(id, tamaño, posiciones);
         self.barcos.push(nuevo_barco);
     }
 }

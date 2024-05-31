@@ -60,7 +60,9 @@ impl Juego {
                 Accion::Saltar => {
                     println!("Jugador {} salta su turno.", jugador_actual.id);
                 }
-                _ => {}
+                _ => {
+                    return Err(CustomError::AccionInvalida)
+                }
             }
 
             self.turno = (self.turno + 1) % self.jugadores.len();
@@ -155,6 +157,10 @@ impl Juego {
             if jugador.id != jugador_id {
                 let puntos = jugador.procesar_ataque(coordenadas_ataque, &mut jugador_atacante.mapa);
                 puntos_ganados += puntos;
+                if puntos > 0 {
+                    jugador.mapa.marcar_hundido(coordenadas_ataque);
+                }
+            
             }
 
         }

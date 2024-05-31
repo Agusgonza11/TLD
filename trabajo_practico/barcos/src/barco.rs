@@ -11,13 +11,8 @@ pub struct Barco {
 
 impl Barco {
     /// Función que crea un nuevo barco
-    pub fn new(id: usize, tamaño: usize, posicion: (i32, i32)) -> Barco {
-        let mut posiciones = Vec::with_capacity(tamaño);
-        let (x, y) = posicion;
-        for i in 0..tamaño {
-            posiciones.push((x + i as i32, y)); 
-        }
-
+    pub fn new(id: usize, tamaño: usize, posiciones: Vec<(i32, i32)>)-> Barco {
+        
         Barco {
             id,
             tamaño,
