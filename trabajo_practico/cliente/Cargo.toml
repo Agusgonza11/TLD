@@ -9,6 +9,8 @@ rand = "0.8"
 barcos = { path=  "../barcos"}
 libreria = { path=  "../libreria"}
 acciones = { path=  "../acciones"}
+juego = { path=  "../juego"}
+
 
 [[bin]]
 name = "cliente"

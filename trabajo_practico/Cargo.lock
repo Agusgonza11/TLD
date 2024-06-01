@@ -32,6 +32,7 @@ version = "0.1.0"
 dependencies = [
  "acciones",
  "barcos",
+ "juego",
  "libreria",
  "ndarray",
  "rand",

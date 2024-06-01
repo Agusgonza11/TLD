@@ -19,7 +19,6 @@ fn handle_client(mut stream: TcpStream, juego: Arc<Mutex<Juego>>) {
     loop {
         // Envía un mensaje al cliente indicándole que es su turno
         let copia_juego = juego.lock().unwrap();
-
         stream.write(&copia_juego.mapa.clone().to_bytes()).unwrap();
 
         // Lee la respuesta del cliente, que será de tipo Accion
@@ -27,7 +26,7 @@ fn handle_client(mut stream: TcpStream, juego: Arc<Mutex<Juego>>) {
         stream.read_to_end(&mut response).expect("Failed to read from client");
         let response_str = String::from_utf8_lossy(&response);
         let accion: Accion = serde_json::from_str(&response_str).unwrap();
-
+        println!("quiero hacer {:?}", accion);
         // Ejemplo de cómo acceder y modificar el mapa compartido
         {
             let mut juego = juego.lock().unwrap(); // Bloquea el mapa para acceder a él de manera segura
