@@ -1,6 +1,7 @@
 use std::net::TcpStream;
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 
+use acciones::accion::Accion;
 use barcos::flota::Flota;
 use juego::mapa::Mapa;
 use ndarray::Array2;
@@ -33,28 +34,50 @@ fn imprimir_acciones() {
     
 }
 
+fn generar_accion() -> Accion {
+    let mut accion = String::new();
+    println!("Elige una accion (m: moverse, a: atacar, t: abrir la tienda, s:saltar): ");
+    io::stdin()
+    .read_line(&mut accion)
+    .expect("Error al leer la entrada");
+/* 
+    match accion.trim() {
+        "m" => return self.moverse(),
+        "a" => return self.atacar(),
+        "t" => return self.abrir_tienda(),
+        "s" => return Accion::Saltar,
+        _ => return Accion::Saltar,
+    }
+    */
+    return Accion::Saltar
+}
+
 fn main() {
-    loop {
         // Conectarse al servidor
         let mut stream = TcpStream::connect("127.0.0.1:8080").expect("Failed to connect to server");
 
-        // Leer la respuesta del servidor (estado del mapa)
-        let mut estado_mapa_bytes = [0; 1024]; // Buffer para almacenar los bytes recibidos
-        let bytes = stream.read(&mut estado_mapa_bytes).expect("Failed to read map state from server");
-        println!("Received map state from server");
+        let mut estado_mapa_bytes = vec![]; // Vector para almacenar los bytes recibidos
+        let mut buffer = [0; 40000]; // Buffer temporal para leer datos
 
-        let mapa_actual: Mapa = from_bytes(&estado_mapa_bytes[..bytes]);
-        mapa_actual.imprimir();
-        imprimir_acciones();
-
-        // Aquí puedes realizar cualquier procesamiento necesario con el estado del mapa recibido
-
-        // Enviar una acción al servidor
-        let action = "ActionFromClient";
-        stream.write(action.as_bytes()).unwrap();
-        println!("Action sent to server: {}", action);
-
-        // Pausa para evitar solicitudes excesivas al servidor
-        std::thread::sleep(std::time::Duration::from_secs(1));
-    }
+        // Leer hasta que no haya más datos disponibles
+        loop {
+            match stream.read(&mut buffer) {
+                Ok(0) => break, // La conexión se ha cerrado
+                Ok(n) => estado_mapa_bytes.extend_from_slice(&buffer[..n]),
+                Err(e) => {
+                    eprintln!("Failed to read from server: {}", e);
+                    return;
+                }
+            }
+            let mapa_actual: Mapa = from_bytes(&estado_mapa_bytes);
+            mapa_actual.imprimir();
+            imprimir_acciones();
+    
+            // Aquí puedes realizar cualquier procesamiento necesario con el estado del mapa recibido
+    
+            // Enviar una acción al servidor
+            let action = generar_accion();
+            //stream.write(action.as_bytes()).unwrap();
+        }
+    
 }
