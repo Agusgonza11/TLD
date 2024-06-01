@@ -1,0 +1,15 @@
+[package]
+name = "cliente"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ndarray = "0.15"
+rand = "0.8"
+barcos = { path=  "../barcos"}
+libreria = { path=  "../libreria"}
+acciones = { path=  "../acciones"}
+
+[[bin]]
+name = "cliente"
+path = "src/cliente.rs"

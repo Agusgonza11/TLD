@@ -1,5 +1,5 @@
 [workspace]
 resolver = "2"
-members = [ "libreria", "juego","acciones", "barcos" ]
+members = [ "libreria", "juego","acciones", "barcos", "servidor", "cliente" ]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
