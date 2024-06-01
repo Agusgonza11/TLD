@@ -18,6 +18,6 @@ fn main() {
         }
     };
 
-    let mut juego = Juego::new(num_jugadores);
+    let mut juego = Juego::new();
     let _ = juego.iniciar_juego();
 }

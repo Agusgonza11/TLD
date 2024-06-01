@@ -11,6 +11,17 @@ pub struct Juego {
 }
 
 impl Juego {
+
+    pub fn new() -> Juego {
+        let mut mapa = Mapa::new();
+        let jugadores = Vec::new();
+        let turno = 0;
+        Juego {
+            mapa,
+            jugadores,
+            turno,
+        }
+    }
     /// Función que crea un nuevo juego
     /// 
     /// # Args
@@ -21,19 +32,7 @@ impl Juego {
     /// 
     /// `Juego` - Juego creado
     /// 
-    pub fn new(numero_jugadores: usize) -> Juego {
-        let mut mapa = Mapa::new();
-        let mut jugadores = Vec::new();
-        for _ in 0..numero_jugadores {
-            jugadores.push(Jugador::new(jugadores.len(), &mut mapa));
-        }
-        let turno = 0;
-        Juego {
-            mapa,
-            jugadores,
-            turno,
-        }
-    }
+
     /// Función que inicia el juego
     /// 
     /// # Returns
@@ -75,6 +74,28 @@ impl Juego {
     /// 
     /// `bool` - Indica si el juego ha finalizado
     
+    pub fn modificar(&mut self, accion: Accion) -> Result<(), CustomError> {
+        match accion {
+            Accion::Moverse(movimiento) => {
+                Self::procesar_movimiento(movimiento, &mut self.jugadores);
+            }
+            Accion::Atacar(ataque) => {
+                Self::procesar_ataque(ataque.cordenadas_ataque, ataque.jugador_id, &mut self.jugadores);
+            }
+            Accion::Saltar => {
+                println!("Jugador salta su turno.");
+            }
+            _ => {
+                return Err(CustomError::AccionInvalida)
+            }
+        }
+        Ok(())
+    }
+
+    pub fn agregar_jugador(&mut self, id: usize) {
+        self.jugadores.push(Jugador::new(id, &mut self.mapa));
+    }
+
     fn finalizo(&self) -> bool {
         let jugadores_con_barcos = self.jugadores.iter().filter(|j| !j.barcos.is_empty()).count();
         if jugadores_con_barcos <= 1 {
@@ -104,10 +125,7 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador agregado
-    pub fn agregar_jugador(&mut self) {
-        let ultimo_id = self.jugadores.len();
-        self.jugadores.push(Jugador::new(ultimo_id, &mut self.mapa));
-    }
+
     /// Función que procesa un movimiento en el mapa
     /// 
     /// # Args

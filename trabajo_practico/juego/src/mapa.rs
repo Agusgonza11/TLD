@@ -3,12 +3,22 @@ use ndarray::Array2;
 use rand::Rng;
 
 
-#[derive(Clone)]
 
 /// Estructura que representa el mapa del juego
 pub struct Mapa {
     pub tablero: Array2<char>,
     pub flotas: Vec<Flota>,
+}
+
+impl Clone for Mapa {
+    fn clone(&self) -> Self {
+        let cloned_tablero = self.tablero.clone();
+        let cloned_flotas = self.flotas.clone();
+        Mapa {
+            tablero: cloned_tablero,
+            flotas: cloned_flotas,
+        }
+    }
 }
 
 impl Mapa {
