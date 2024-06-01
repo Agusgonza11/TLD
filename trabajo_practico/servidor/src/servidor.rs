@@ -18,8 +18,9 @@ fn handle_client(mut stream: TcpStream, juego: Arc<Mutex<Juego>>) {
     let mut buffer = [0; 1024];
     loop {
         // Envía un mensaje al cliente indicándole que es su turno
-        let turn_msg = "Your turn. Please make a move.";
-        stream.write(turn_msg.as_bytes()).unwrap();
+        let copia_juego = juego.lock().unwrap();
+
+        stream.write(&copia_juego.mapa.clone().to_bytes()).unwrap();
 
         // Lee la respuesta del cliente, que será de tipo Accion
         let mut response = Vec::new();

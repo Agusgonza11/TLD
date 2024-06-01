@@ -22,6 +22,8 @@ impl Juego {
             turno,
         }
     }
+
+
     /// Función que crea un nuevo juego
     /// 
     /// # Args

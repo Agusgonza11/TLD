@@ -5,3 +5,13 @@ pub enum EstadoBarco {
     Golpeado,
     Hundido,
 }
+
+impl EstadoBarco {
+    pub fn to_bytes(&self) -> &[u8] {
+        match self {
+            EstadoBarco::Sano => &[0],
+            EstadoBarco::Golpeado => &[1],
+            EstadoBarco::Hundido => &[2],
+        }
+    }
+}

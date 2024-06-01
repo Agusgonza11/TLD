@@ -134,6 +134,33 @@ impl Mapa {
             }
         }
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        // Calcula el tamaño total necesario para los bytes
+        let total_size = self.tablero.nrows() * self.tablero.ncols(); // Tamaño total del tablero
+
+        // Crea un vector temporal para almacenar los bytes
+        let mut bytes = vec![0; total_size];
+        let mut offset = 0;
+
+        // Convierte el tablero a bytes
+        for row in self.tablero.rows() {
+            for &cell in row {
+                bytes[offset] = cell as u8; // Convierte el carácter a su representación de byte
+                offset += 1;
+            }
+        }
+
+        // Convierte las flotas a bytes
+        for flota in &self.flotas {
+            let flota_bytes = flota.to_bytes();
+            bytes[offset..offset + flota_bytes.len()].copy_from_slice(&flota_bytes);
+            offset += flota_bytes.len();
+        }
+
+        // Devuelve un slice que apunta a los bytes en el vector
+        bytes
+    }
     
     
     /// Función que marca una posición como hundida en el tablero
