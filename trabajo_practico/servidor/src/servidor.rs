@@ -24,17 +24,27 @@ fn main() {
     let listener = TcpListener::bind("127.0.0.1:8080").expect("Failed to bind");
     println!("Server listening on port 8080...");
 
+    // Vector para almacenar los identificadores de los hilos
+    let mut handles = vec![];
+
     // Acepta conexiones entrantes y las maneja en subprocesos
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                thread::spawn(move || {
+                // Almacena el identificador del hilo en el vector
+                let handle = thread::spawn(move || {
                     handle_client(stream);
                 });
+                handles.push(handle);
             }
             Err(e) => {
                 eprintln!("Error accepting connection: {}", e);
             }
         }
+    }
+
+    // Espera a que todos los hilos terminen
+    for handle in handles {
+        handle.join().unwrap();
     }
 }
