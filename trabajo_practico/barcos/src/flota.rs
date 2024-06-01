@@ -1,4 +1,5 @@
-use crate::barco::Barco;
+use crate::{barco::Barco, estado_barco::EstadoBarco};
+
 #[derive(Debug, Clone)]
 pub struct Flota {
     pub barcos: Vec<Barco>,
@@ -42,5 +43,52 @@ impl Flota {
 
         // Devolver un slice de bytes del vector
         bytes
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> (Flota, usize) {
+        let mut offset = 0;
+
+        // Lee el número de barcos de los primeros 4 bytes
+        let num_barcos = u32::from_be_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]]) as usize;
+        offset += 4;
+
+        // Crea un vector para almacenar los barcos
+        let mut barcos = Vec::with_capacity(num_barcos);
+
+        // Itera sobre cada barco en los bytes restantes
+        for _ in 0..num_barcos {
+            // Lee el ID del barco de los siguientes 4 bytes
+            let id = u32::from_be_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]]) as usize;
+            offset += 4;
+
+            // Lee el tamaño del barco de los siguientes 4 bytes
+            let tamaño = u32::from_be_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]]) as usize;
+            offset += 4;
+
+            // Lee las posiciones del barco de los siguientes 8 * 2 * 10 bytes
+            let mut posiciones = Vec::new();
+            for _ in 0..tamaño {
+                let x = i32::from_be_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]]);
+                let y = i32::from_be_bytes([bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]]);
+                posiciones.push((x, y));
+                offset += 8;
+            }
+
+            // Lee el estado del barco del siguiente byte
+            let estado = match bytes[offset] {
+                0 => EstadoBarco::Sano,
+                1 => EstadoBarco::Golpeado,
+                2 => EstadoBarco::Hundido,
+                _ => panic!("Valor de estado no válido"),
+            };
+            offset += 1;
+
+            // Crea el barco y agrégalo al vector
+            let barco = Barco { id, tamaño, posiciones, estado };
+            barcos.push(barco);
+        }
+
+        // Crea la flota y devuelve el resultado junto con el número de bytes leídos
+        (Flota { barcos }, offset)
     }
 }

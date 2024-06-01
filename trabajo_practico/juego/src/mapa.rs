@@ -162,6 +162,24 @@ impl Mapa {
         bytes
     }
     
+    pub fn from_bytes(bytes: &[u8]) -> Mapa {
+        // Lee el tablero de los bytes
+        let mut tablero = Array2::from_elem((10, 10), '.');
+        for (i, byte) in bytes.iter().enumerate().take(10 * 10) {
+            tablero[[i / 10, i % 10]] = *byte as char;
+        }
+
+        // Lee las flotas de los bytes
+        let mut flotas = Vec::new();
+        let mut offset = 10 * 10; // Desplazamiento inicial después del tablero
+        while offset < bytes.len() {
+            let (flota, bytes_read) = Flota::from_bytes(&bytes[offset..]);
+            flotas.push(flota);
+            offset += bytes_read;
+        }
+
+        Mapa { tablero, flotas }
+    }
     
     /// Función que marca una posición como hundida en el tablero
     /// 
