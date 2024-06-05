@@ -1,9 +1,11 @@
+use std::{io::Write, net::TcpStream};
+
 use acciones::{accion::Accion, movimiento::Movimiento};
 use libreria::custom_error::CustomError;
 
-use crate::{jugador::Jugador, mapa::Mapa};
+use crate::{jugador::Jugador, mapa::Mapa, server::Server};
 
-
+#[derive(Clone)]
 pub struct Juego {
     pub mapa: Mapa,
     pub jugadores: Vec<Jugador>,
@@ -43,13 +45,21 @@ impl Juego {
     /// # Errors
     /// 
     /// `CustomError` - Error personalizado
-    pub fn iniciar_juego(&mut self) -> Result<(), CustomError> {
+    pub fn iniciar_juego(&mut self, server: &mut Server) -> Result<(), CustomError> {
         while !self.finalizo() {
             let jugador_actual = &mut self.jugadores[self.turno];
             println!("Turno del jugador {}", jugador_actual.id);
             Self::imprimir_acciones();
-
-            let accion = jugador_actual.turno();
+            if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
+                let mut conexion = conexion.lock().unwrap();
+                let mensaje = "Realice una accion:\n\
+                    Puede moverse: (m)\n\
+                    Puede atacar: (a)\n\
+                    Puede abrir la tienda: (t)\n\
+                    Puede saltar turno: (s)\n";
+                    Self::enviar_mensaje(&mut conexion, mensaje.as_bytes().to_vec())?;
+            }
+            let accion = jugador_actual.turno(server);
             match accion {
                 Accion::Moverse(movimiento) => {
                     Self::procesar_movimiento(movimiento, &mut self.jugadores);
@@ -64,6 +74,7 @@ impl Juego {
                     return Err(CustomError::AccionInvalida)
                 }
             }
+
 
             self.turno = (self.turno + 1) % self.jugadores.len();
         }
@@ -169,5 +180,12 @@ impl Juego {
                 jugador.puntos += puntos_ganados;
             }
         }
+    }
+    fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
+        let result_stream = stream.write_all(&msg);
+        result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        let result_flush = stream.flush();
+        result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        Ok(())
     }
 }

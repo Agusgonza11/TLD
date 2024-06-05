@@ -1,6 +1,11 @@
+use std::{io::Write, net::TcpStream};
+
 use barcos::flota::Flota;
+use libreria::custom_error::CustomError;
 use ndarray::Array2;
 use rand::Rng;
+
+use crate::server::Server;
 
 
 #[derive(Clone)]
@@ -93,6 +98,32 @@ impl Mapa {
             println!();
         }
     }
+    pub fn enviar_tablero(&self, id: String, server: &mut Server) -> Result<(), CustomError> {
+        let jugador: char = id.chars().next().unwrap();
+        
+        let mut tablero_serializado = String::new();
+        for row in self.tablero.rows() {
+            for &cell in row.iter() {
+                if cell != '.' && cell != jugador {
+                    tablero_serializado.push('.');
+                } else {
+                    tablero_serializado.push(cell);
+                }
+            }
+            tablero_serializado.push('\n');
+        }
+    
+        let mensaje = format!("TABLERO:{}", tablero_serializado);
+    
+        if let Some(conexion) = server.conexiones_jugadores.get(&id.parse().unwrap()) {
+            let mut conexion = conexion.lock().unwrap();
+            Self::enviar_mensaje(&mut conexion, mensaje.as_bytes().to_vec())?;
+        }
+        
+        Ok(())
+    }
+    
+    
     /// Funcion que actualiza la posición de un barco en el tablero
     /// 
     /// # Args
@@ -240,5 +271,11 @@ impl Mapa {
         }
         false
     }
-    
+    fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
+        let result_stream = stream.write_all(&msg);
+        result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        let result_flush = stream.flush();
+        result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        Ok(())
+    }
 }

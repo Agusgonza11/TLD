@@ -3,12 +3,21 @@ name = "juego"
 version = "0.1.0"
 edition = "2021"
 
-
 [dependencies]
 ndarray = "0.15"
 rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
 barcos = { path=  "../barcos"}
 libreria = { path=  "../libreria"}
 acciones = { path=  "../acciones"}
 
+[[bin]]
+name = "servidor"
+path = "src/main.rs"
+
+[[bin]]
+name = "jugador"
+path = "src/main_jugador.rs"
 

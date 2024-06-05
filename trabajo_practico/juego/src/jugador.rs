@@ -1,9 +1,9 @@
 use acciones::{accion::Accion, ataque::Ataque, movimiento::Movimiento};
 use barcos::{barco::Barco, estado_barco::EstadoBarco};
-use libreria::constantes::{ATAQ, MOV};
+use libreria::{constantes::{ATAQ, MOV}, custom_error::CustomError};
 
-use crate:: mapa::Mapa  ;
-use std::{io::{self, Write}, vec};
+use crate::{ mapa::Mapa, server::Server}  ;
+use std::{io::{self, Write}, net::TcpStream, vec};
 
 
 #[derive(Clone)]
@@ -56,9 +56,9 @@ impl Jugador {
     /// # Returns
     /// 
     /// `Accion` - Acción realizada por el jugador
-    pub fn turno(&mut self) -> Accion {
+    pub fn turno(&mut self,server:&mut Server) -> Accion {
         self.mapa.imprimir_tablero(self.id.to_string());
-
+        let _ = self.mapa.enviar_tablero(self.id.to_string(), server);
         loop {
             let mut accion = String::new();
             println!("Puntos: {}", self.puntos);
@@ -68,7 +68,7 @@ impl Jugador {
                 .expect("Error al leer la entrada");
 
             match accion.trim() {
-                "m" => return self.moverse(),
+                "m" => return self.moverse(server),
                 "a" => return self.atacar(),
                 "t" => return self.abrir_tienda(),
                 "s" => return Accion::Saltar,
@@ -100,12 +100,12 @@ impl Jugador {
     /// # Returns
     /// 
     /// `Accion` - Acción de movimiento realizada por el jugador
-    fn moverse(&mut self) -> Accion {
+    fn moverse(&mut self,server: &mut Server) -> Accion {
         
         let (barco_seleccionado, coordenadas_destino) = self.pedir_instrucciones(MOV);
         if barco_seleccionado.estado == EstadoBarco::Golpeado || barco_seleccionado.estado == EstadoBarco::Hundido{
             println!("El barco seleccionado esta golpeado, no se puede mover, elija otra accion u otro barco.");
-            return self.turno();
+            return self.turno(server);
          }
         let id_barco = barco_seleccionado.id;
         let coordenadas_origen = barco_seleccionado.posiciones[0];
@@ -115,7 +115,7 @@ impl Jugador {
 
         if coordenadas_contiguas.is_empty() {
             println!("No hay suficientes espacios contiguos disponibles para mover el barco.");
-            return self.moverse();
+            return self.moverse(server);
         }
     
         let mut nuevas_posiciones = vec![];
@@ -257,5 +257,11 @@ impl Jugador {
         }
         puntos
     }
-    
+    fn _enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
+        let result_stream = stream.write_all(&msg);
+        result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        let result_flush = stream.flush();
+        result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        Ok(())
+    }
 }
