@@ -47,6 +47,18 @@ impl Jugador {
             mapa: mapa.clone(),
         }
     }
+
+    pub fn enviar_instrucciones(&self, server: &mut Server) -> Result<(), CustomError> {
+        let mensaje = format!("Puntos:{}:\nElige una acción (m: moverse, a: atacar, t: abrir la tienda, s: saltar)", self.puntos);
+    
+        if let Some(conexion) = server.conexiones_jugadores.get(&self.id) {
+            let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion)?;
+            Self::enviar_mensaje(&conexion, mensaje.as_bytes().to_vec())?;
+        }
+    
+        Ok(())
+    }
+    
     /// Función que permite al jugador realizar un turno
     /// 
     /// # Args
@@ -60,6 +72,7 @@ impl Jugador {
         self.mapa.imprimir_tablero(self.id.to_string());
         let _ = self.mapa.enviar_tablero(self.id.to_string(), server);
         loop {
+            let _ = self.enviar_instrucciones(server);
             let mut accion = String::new();
             println!("Puntos: {}", self.puntos);
             println!("Elige una accion (m: moverse, a: atacar, t: abrir la tienda, s:saltar): ");
@@ -257,7 +270,7 @@ impl Jugador {
         }
         puntos
     }
-    fn _enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
+    fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         let result_flush = stream.flush();

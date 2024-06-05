@@ -31,15 +31,25 @@ impl Cliente {
         loop {
             match self.recibir_mensaje() {
                 Ok(mensaje) => {
-                    println!("{}", mensaje);
                     if mensaje.trim() == "¿Desean comenzar el juego? (si/no)" {
-                        println!("¿Deseas comenzar el juego? (si/no)");
+                        println!("¿Ya hay jugadores suficientes.Deseas comenzar el juego? (si/no)");
+                        let mut respuesta = String::new();
+                        io::stdin().read_line(&mut respuesta).expect("Error al leer la respuesta.");
+                        self.enviar_respuesta(respuesta.trim())?;
+                    }
+                    if mensaje.starts_with("Realice una accion:") || mensaje.starts_with("Esperando"){
+                        println!("{}", mensaje);
+                    }
+                    if mensaje.starts_with("Puntos:") {
+                        println!("{}", mensaje);
+                        
                         let mut respuesta = String::new();
                         io::stdin().read_line(&mut respuesta).expect("Error al leer la respuesta.");
                         self.enviar_respuesta(respuesta.trim())?;
                     }
                     if mensaje.starts_with("TABLERO:") {
-                        let contenido_tablero = mensaje.trim_start_matches("TABLERO:");
+                        let contenido_tablero = &mensaje["TABLERO:".len()..]; 
+                        
                         match serde_json::from_str::<Vec<Vec<char>>>(contenido_tablero) {
                             Ok(tablero) => {
                                 for row in tablero {
@@ -49,8 +59,8 @@ impl Cliente {
                                     println!();
                                 }
                             }
-                            Err(_) => {
-                                continue;
+                            Err(err) => {
+                                println!("Error al deserializar el tablero: {}", err);
                             }
                         }
                     }

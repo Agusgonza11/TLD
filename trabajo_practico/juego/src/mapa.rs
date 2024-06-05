@@ -99,30 +99,33 @@ impl Mapa {
         }
     }
     pub fn enviar_tablero(&self, id: String, server: &mut Server) -> Result<(), CustomError> {
-        let jugador: char = id.chars().next().unwrap();
-        
-        let mut tablero_serializado = String::new();
-        for row in self.tablero.rows() {
-            for &cell in row.iter() {
-                if cell != '.' && cell != jugador {
-                    tablero_serializado.push('.');
-                } else {
-                    tablero_serializado.push(cell);
-                }
+        let jugador: char = id.chars().next().ok_or(CustomError::ErrorAceptandoConexion)?;
+
+        let mut tablero_ocultado = self.tablero.clone();
+        for ((_, _), cell) in tablero_ocultado.indexed_iter_mut() {
+            if *cell != '.' && *cell != jugador {
+                *cell = '.';
             }
-            tablero_serializado.push('\n');
         }
-    
+
+        let tablero_vec: Vec<Vec<char>> = tablero_ocultado.outer_iter()
+            .map(|row| row.to_vec())
+            .collect();
+
+        let tablero_serializado = serde_json::to_string(&tablero_vec)
+            .map_err(|_| CustomError::ErrorSerializacion)?;
+
         let mensaje = format!("TABLERO:{}", tablero_serializado);
-    
-        if let Some(conexion) = server.conexiones_jugadores.get(&id.parse().unwrap()) {
-            let mut conexion = conexion.lock().unwrap();
-            Self::enviar_mensaje(&mut conexion, mensaje.as_bytes().to_vec())?;
+
+        if let Some(conexion) = server.conexiones_jugadores.get(&id.parse().unwrap_or_default()) {
+            let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion)?;
+            Self::enviar_mensaje(&conexion, mensaje.as_bytes().to_vec())?;
         }
-        
+
         Ok(())
     }
-    
+
+
     
     /// Funcion que actualiza la posición de un barco en el tablero
     /// 
