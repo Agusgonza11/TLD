@@ -75,11 +75,12 @@ impl Jugador {
             let _ = self.enviar_instrucciones(server);
             let mut accion = String::new();
             println!("Puntos: {}", self.puntos);
-            println!("Elige una accion (m: moverse, a: atacar, t: abrir la tienda, s:saltar): ");
+            //println!("Elige una accion (m: moverse, a: atacar, t: abrir la tienda, s:saltar): ");
             io::stdin()
                 .read_line(&mut accion)
                 .expect("Error al leer la entrada");
 
+            //Aca tengo que recibir la accion de parte del cliente
             match accion.trim() {
                 "m" => return self.moverse(server),
                 "a" => return self.atacar(),

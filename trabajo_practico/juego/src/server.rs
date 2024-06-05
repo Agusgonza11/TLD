@@ -103,7 +103,7 @@ impl Server {
     }
 
     pub fn preguntar_comienzo_juego(&self) {
-        if self.conexiones_jugadores.len() <4 {
+        if self.conexiones_jugadores.len() <2 {
             println!("Esperando más jugadores para comenzar el juego...");
             self.esperar_jugadores();
         } else {

@@ -5,3 +5,4 @@ pub mod server;
 pub mod cliente;
 pub mod serializador;
 pub mod deserializador;
+pub mod mensaje;

@@ -13,6 +13,7 @@ barcos = { path=  "../barcos"}
 libreria = { path=  "../libreria"}
 acciones = { path=  "../acciones"}
 
+
 [[bin]]
 name = "servidor"
 path = "src/main.rs"

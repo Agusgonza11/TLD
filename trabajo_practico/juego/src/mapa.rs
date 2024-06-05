@@ -114,7 +114,7 @@ impl Mapa {
 
         let tablero_serializado = serde_json::to_string(&tablero_vec)
             .map_err(|_| CustomError::ErrorSerializacion)?;
-
+        //println!("aca esta {:?}", tablero_serializado);
         let mensaje = format!("TABLERO:{}", tablero_serializado);
 
         if let Some(conexion) = server.conexiones_jugadores.get(&id.parse().unwrap_or_default()) {

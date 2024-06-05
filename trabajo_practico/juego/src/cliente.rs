@@ -3,6 +3,7 @@ use std::{
     net::TcpStream,
     sync::{Arc, Mutex},
 };
+use serde_json;
 
 use libreria::custom_error::CustomError;
 
@@ -63,6 +64,7 @@ impl Cliente {
                                 println!("Error al deserializar el tablero: {}", err);
                             }
                         }
+                        //Aca tengo que enviar la accion del jugador
                     }
                 }
                 Err(e) => {
