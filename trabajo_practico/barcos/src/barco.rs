@@ -20,4 +20,8 @@ impl Barco {
             estado: EstadoBarco::Sano,
         }
     }
+
+    pub fn obtener_datos(&self) -> (usize, Vec<(i32, i32)>) {
+        return (self.id.clone(), self.posiciones.clone())
+    }
 }

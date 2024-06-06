@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use serde_json;
-use libreria::custom_error::CustomError;
+use libreria::{constantes::{ATAQ, MOV}, custom_error::CustomError};
 
 use crate::mensaje::{Instruccion, Mensaje};
 
@@ -124,22 +124,88 @@ impl Cliente {
         
     }
 
-    fn pedir_instrucciones(_barcos: Vec<Vec<char>>) -> Instruccion {
+    fn pedir_instrucciones(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Instruccion {
         let mut accion = String::new();
         io::stdin()
         .read_line(&mut accion)
         .expect("Error al leer la entrada");
-        /*
+        
         match accion.trim() {
-            "m" => return Self::moverse(server),
-            "a" => return Self::atacar(),
-            "t" => return Self::abrir_tienda(),
-            "s" => return Accion::Saltar,
-            _ => println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s)."),
+            "m" => return Self::moverse(barcos),
+            "a" => return Self::atacar(barcos),
+            "t" => return Instruccion::Tienda,
+            "s" => return Instruccion::Saltar,
+            _ => {
+                println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s).");
+                return Instruccion::Saltar
+            },   
         }
-        */
-        Instruccion::Saltar
+        
     }
+
+    fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Instruccion {
+        let (id, posicion) = Self::obtener_barco(barcos, MOV);
+        Instruccion::Movimiento(id, posicion)
+    }
+
+    fn atacar(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Instruccion {
+        let (id, posicion) = Self::obtener_barco(barcos, ATAQ);
+
+        Instruccion::Ataque(id, posicion)
+    }
+
+    fn obtener_barco(barcos: Vec<(usize, Vec<(i32, i32)>)>, accion: &str) -> (usize, (i32, i32)) {
+        println!("Elige un barco para {}:", accion);
+        for (i, (id, posicion)) in barcos.iter().enumerate() {
+            println!("{}: ID: {}, Posicion: {:?}", i, id, posicion);
+        }
+
+        let mut barco_seleccionado = String::new();
+        io::stdout().flush().expect("Error");
+        io::stdin()
+            .read_line(&mut barco_seleccionado)
+            .expect("Error");
+        let barco_seleccionado: usize = match barco_seleccionado.trim().parse() {
+            Ok(numero) => numero,
+            Err(_) => {
+                println!("Numero de barco invalido. Por favor, ingrese un numero dentro del rango.");
+                return Self::obtener_barco(barcos, accion);
+            }
+        };
+
+        if barco_seleccionado >= barcos.len() {
+            println!("Numero de barco invalido. Por favor, elige un numero dentro del rango.");
+            return Self::obtener_barco(barcos, accion);
+        }
+
+        let cordenadas = Self::pedir_coordenadas();
+
+        return (barco_seleccionado, cordenadas)
+    }
+
+
+    fn pedir_coordenadas() -> (i32, i32) {
+        loop {
+            println!("Ingresa las coordenadas en formato 'x,y': ");
+
+            let mut coordenadas = String::new();
+            io::stdin()
+                .read_line(&mut coordenadas)
+                .expect("Error al leer la entrada");
+
+            let mut iter = coordenadas.trim().split(',');
+            if let (Some(x_str), Some(y_str)) = (iter.next(), iter.next()) {
+                if let Ok(x) = x_str.trim().parse::<i32>() {
+                    if let Ok(y) = y_str.trim().parse::<i32>() {
+                        return (x, y);
+                    }
+                }
+            }
+
+            println!("Formato de coordenadas incorrecto. Intentalo de nuevo.");
+        }
+    }
+
 }
     
 

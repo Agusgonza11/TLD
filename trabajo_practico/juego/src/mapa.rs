@@ -116,10 +116,10 @@ impl Mapa {
         //    .map_err(|_| CustomError::ErrorSerializacion)?;
         //println!("aca esta {:?}", tablero_serializado);
         //let mensaje = format!("TABLERO:{}", tablero_serializado);
-        let mut barcos_serializados: Vec<Vec<char>> = Vec::new();
-        for (i, barco) in barcos.iter().enumerate() {
-            let cadena = format!("{}: ID: {}, Posicion: {:?}", i, barco.id, barco.posiciones);
-            barcos_serializados.push(cadena.chars().collect());
+        let mut barcos_serializados = Vec::new();
+        for (_, barco) in barcos.iter().enumerate() {
+            let barco = barco.obtener_datos();
+            barcos_serializados.push(barco);
         }
 
         if let Some(conexion) = server.conexiones_jugadores.get(&id.parse().unwrap_or_default()) {
