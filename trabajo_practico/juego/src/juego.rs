@@ -53,7 +53,6 @@ impl Juego {
             if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
                 let mut conexion = conexion.lock().unwrap();
                 let mensaje_serializado = serde_json::to_string(&Mensaje::RealiceAccion).unwrap();
-                println!("a ver {}", mensaje_serializado);
                 Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec())?;
             }
             let accion = jugador_actual.turno(server);

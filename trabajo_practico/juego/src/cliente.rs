@@ -4,10 +4,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 use serde_json;
-
 use libreria::custom_error::CustomError;
 
-use crate::mensaje::Mensaje;
+use crate::mensaje::{Instruccion, Mensaje};
 
 
 pub struct Cliente {
@@ -63,10 +62,14 @@ impl Cliente {
                                         }
                                         println!();
                                     }
+                                    let accion = Self::pedir_instrucciones(barcos);
+                                    let mensaje_serializado = serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
+                                    self.enviar_respuesta(mensaje_serializado.as_str())?;
                                     // Aquí se podría enviar la acción del jugador
                                     //let accion = "accion del jugador";  // Cambia esto por la acción real del jugador
                                     //self.enviar_tablero(tablero, vec![accion.chars().next().unwrap()])?;  // Ejemplo de envío de un tablero
                                 },
+                                _ => {}
                             }
                         }
                         Err(err) => {
@@ -120,6 +123,23 @@ impl Cliente {
         println!("Puede saltar turno: (s)");
         
     }
+
+    fn pedir_instrucciones(_barcos: Vec<Vec<char>>) -> Instruccion {
+        let mut accion = String::new();
+        io::stdin()
+        .read_line(&mut accion)
+        .expect("Error al leer la entrada");
+        /*
+        match accion.trim() {
+            "m" => return Self::moverse(server),
+            "a" => return Self::atacar(),
+            "t" => return Self::abrir_tienda(),
+            "s" => return Accion::Saltar,
+            _ => println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s)."),
+        }
+        */
+        Instruccion::Saltar
+    }
+}
     
 
-}

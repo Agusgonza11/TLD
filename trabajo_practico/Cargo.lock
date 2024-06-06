@@ -5,6 +5,10 @@ version = 3
 [[package]]
 name = "acciones"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "autocfg"
