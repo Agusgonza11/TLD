@@ -65,10 +65,13 @@ impl Cliente {
                                     let accion = Self::pedir_instrucciones(barcos);
                                     let mensaje_serializado = serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
                                     self.enviar_respuesta(mensaje_serializado.as_str())?;
-                                    // Aquí se podría enviar la acción del jugador
-                                    //let accion = "accion del jugador";  // Cambia esto por la acción real del jugador
-                                    //self.enviar_tablero(tablero, vec![accion.chars().next().unwrap()])?;  // Ejemplo de envío de un tablero
+
                                 },
+                                Mensaje::RepetirAccion(mensaje) => {
+                                    println!("{}", mensaje);
+                                    //let accion = Self::pedir_instrucciones(barcos);
+
+                                }
                                 _ => {}
                             }
                         }

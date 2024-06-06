@@ -98,7 +98,7 @@ impl Mapa {
             println!();
         }
     }
-    pub fn enviar_tablero(&self, id: String, server: &mut Server, barcos: &Vec<Barco>) -> Result<(), CustomError> {
+    pub fn enviar_tablero(&self, id: String, server: &Server, barcos: &Vec<Barco>) -> Result<(), CustomError> {
         let jugador: char = id.chars().next().ok_or(CustomError::ErrorAceptandoConexion)?;
 
         let mut tablero_ocultado = self.tablero.clone();

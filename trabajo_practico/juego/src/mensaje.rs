@@ -16,5 +16,6 @@ pub enum Mensaje {
     Esperando,
     Puntos(usize),
     Tablero(Vec<Vec<char>>, Vec<(usize, Vec<(i32, i32)>)>),
-    Accion(Instruccion)
+    Accion(Instruccion),
+    RepetirAccion(String),
 }

@@ -1,9 +1,9 @@
-use std::{io::Write, net::TcpStream};
+use std::{io::Write, net::TcpStream, sync::MutexGuard};
 
-use acciones::{accion::Accion, movimiento::Movimiento};
+use barcos::{barco::Barco, estado_barco::EstadoBarco};
 use libreria::custom_error::CustomError;
-
-use crate::{jugador::Jugador, mapa::Mapa, mensaje::Mensaje, server::Server};
+use crate::juego::CustomError::AccionInvalida;
+use crate::{jugador::Jugador, mapa::Mapa, mensaje::{Instruccion, Mensaje}, server::Server};
 
 #[derive(Clone)]
 pub struct Juego {
@@ -55,27 +55,55 @@ impl Juego {
                 let mensaje_serializado = serde_json::to_string(&Mensaje::RealiceAccion).unwrap();
                 Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec())?;
             }
-            let accion = jugador_actual.turno(server);
-            match accion {
-                Accion::Moverse(movimiento) => {
-                    Self::procesar_movimiento(movimiento, &mut self.jugadores);
+            jugador_actual.manejar_turno(server);
+            match server.recibir_mensaje(jugador_actual.id) {
+                Ok(mensaje_serializado) => {
+                    match serde_json::from_str::<Mensaje>(&mensaje_serializado) {
+                        Ok(mensaje) => {
+                            if let Mensaje::Accion(instruccion) = mensaje {
+                                //let mut conexion = conexion.lock().unwrap();
+                                if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
+                                    let mut conexion = conexion.lock().unwrap();
+                                    Self::manejar_instruccion(instruccion, jugador_actual, &mut conexion)?;
+                                }
+                            } 
+                        }
+                        Err(err) => {
+                            println!("Error al deserializar el mensaje: {}", err);
+                        }
+                    }
                 }
-                Accion::Atacar(ataque) => {
-                    Self::procesar_ataque(ataque.cordenadas_ataque, ataque.jugador_id, &mut self.jugadores);
-                }
-                Accion::Saltar => {
-                    println!("Jugador {} salta su turno.", jugador_actual.id);
-                }
-                _ => {
-                    return Err(CustomError::AccionInvalida)
+                Err(e) => {
+                    println!("Error al recibir mensaje del cliente: {:?}", e);
+                    break;
                 }
             }
-
-
+            
             self.turno = (self.turno + 1) % self.jugadores.len();
         }
         Ok(())
     }
+
+    fn manejar_instruccion(instruccion: Instruccion, jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
+        match instruccion {
+            Instruccion::Movimiento(barco_id, cordenadas) => {
+                let barco = jugador_actual.obtener_barco(barco_id);
+                Self::procesar_movimiento(barco, cordenadas, jugador_actual, conexion)?;
+                //Self::procesar_movimiento(movimiento, &mut self.jugadores);
+            }
+            Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
+                Self::procesar_ataque(coordenadas_ataque, jugador_actual)
+            }
+            Instruccion::Saltar => {
+                println!("Jugador salta su turno.");
+            }
+            Instruccion::Tienda => {
+                println!("Jugador abre la tienda");
+            }
+        }
+        Ok(())
+    }
+
     /// Función que verifica si el juego ha finalizado
     /// 
     /// # Returns
@@ -126,21 +154,30 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador con el movimiento procesado
-    fn procesar_movimiento(movimiento: Movimiento, jugadores: &mut Vec<Jugador>) {
-        for jugador in jugadores.iter_mut() {
-            if jugador.id == movimiento.jugador_id {
-                for barco in &mut jugador.barcos {
-                    if barco.id == movimiento.id_barco {
-                        let nuevas_posiciones = movimiento.cordenadas_destino.clone();
-                        let posicion_inicial = barco.posiciones.clone();
-                        barco.posiciones = nuevas_posiciones.clone();
-                        println!("Barco {} del jugador {} se ha movido a {:?}", barco.id, jugador.id, barco.posiciones);
-                        jugador.mapa.actualizar_posicion_barco(&posicion_inicial, &nuevas_posiciones, jugador.id);
-                        break;
-                    }
-                }
+    fn procesar_movimiento(barco: Barco, cordenadas: (i32, i32), jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
+        if barco.estado == EstadoBarco::Golpeado || barco.estado == EstadoBarco::Hundido {
+            let mensaje = "El barco seleccionado esta golpeado, no se puede mover, elija otra accion u otro barco.";
+            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned())).unwrap();
+            Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
+            return Err(AccionInvalida)
+        }
+        let coordenadas_contiguas = jugador_actual.mapa.obtener_coordenadas_contiguas(cordenadas,barco.tamaño);
+        if coordenadas_contiguas.is_empty() {
+            let mensaje = "No hay suficientes espacios contiguos disponibles para mover el barco.";
+            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned())).unwrap();
+            Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
+            return Err(AccionInvalida)
+        }
+        let mut nuevas_posiciones = vec![];
+        for (i, &coordenada) in coordenadas_contiguas.iter().enumerate() {
+            nuevas_posiciones.push(coordenada);
+            if i == barco.tamaño - 1 {
+                break;
             }
         }
+        jugador_actual.mapa.actualizar_posicion_barco(&barco.posiciones, &nuevas_posiciones, jugador_actual.id);
+
+        Ok(())
     }
     /// Función que procesa un ataque en el mapa
     /// 
@@ -157,26 +194,16 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador con el ataque procesado
-    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_id: usize, jugadores: &mut Vec<Jugador>) {
+    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_actual: &mut Jugador) {
         let mut puntos_ganados = 0;
-        for jugador in jugadores.iter_mut() {
-            let mut jugador_atacante = jugador.clone();
-            if jugador.id != jugador_id {
-                let puntos = jugador.procesar_ataque(coordenadas_ataque, &mut jugador_atacante.mapa);
-                puntos_ganados += puntos;
-                if puntos > 0 {
-                    jugador.mapa.marcar_hundido(coordenadas_ataque);
-                }
-            
-            }
-
+        let puntos = jugador_actual.procesar_ataque(coordenadas_ataque);
+        puntos_ganados += puntos;
+        if puntos > 0 {
+            jugador_actual.mapa.marcar_hundido(coordenadas_ataque);
         }
-        for jugador in jugadores.iter_mut(){
-            if jugador.id == jugador_id {
-                jugador.puntos += puntos_ganados;
-            }
-        }
+        jugador_actual.puntos += puntos_ganados;
     }
+
     fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;

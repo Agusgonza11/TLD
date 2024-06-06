@@ -83,6 +83,14 @@ impl Server {
         Ok(())
     }
 
+    pub fn recibir_mensaje(&mut self, id: usize) -> Result<String, CustomError> {
+        let mut buffer = [0; 2048];
+        let stream = self.conexiones_jugadores.get(&id).unwrap(); 
+        let bytes_read = stream.lock().unwrap().read(&mut buffer).map_err(|_| CustomError::ErrorRecibiendoInstruccion)?;
+        let message = String::from_utf8_lossy(&buffer[..bytes_read]).to_string();
+        Ok(message)
+    }
+
     fn esperar_jugadores(&self) {
         for (_, connection) in &self.conexiones_jugadores {
             let mut connection = connection.lock().unwrap();
