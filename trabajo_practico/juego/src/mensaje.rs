@@ -1,10 +1,10 @@
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-enum Mensaje {
+pub enum Mensaje {
     PreguntaComienzo,
     RealiceAccion,
     Esperando,
-    Puntos(String),
-    Tablero(Vec<Vec<char>>, Vec<char>),
+    Puntos(usize),
+    Tablero(Vec<Vec<char>>, Vec<Vec<char>>),
 }

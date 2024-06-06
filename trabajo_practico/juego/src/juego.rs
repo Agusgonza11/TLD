@@ -3,7 +3,7 @@ use std::{io::Write, net::TcpStream};
 use acciones::{accion::Accion, movimiento::Movimiento};
 use libreria::custom_error::CustomError;
 
-use crate::{jugador::Jugador, mapa::Mapa, server::Server};
+use crate::{jugador::Jugador, mapa::Mapa, mensaje::Mensaje, server::Server};
 
 #[derive(Clone)]
 pub struct Juego {
@@ -52,12 +52,9 @@ impl Juego {
             Self::imprimir_acciones();
             if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
                 let mut conexion = conexion.lock().unwrap();
-                let mensaje = "Realice una accion:\n\
-                    Puede moverse: (m)\n\
-                    Puede atacar: (a)\n\
-                    Puede abrir la tienda: (t)\n\
-                    Puede saltar turno: (s)\n";
-                    Self::enviar_mensaje(&mut conexion, mensaje.as_bytes().to_vec())?;
+                let mensaje_serializado = serde_json::to_string(&Mensaje::RealiceAccion).unwrap();
+                println!("a ver {}", mensaje_serializado);
+                Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec())?;
             }
             let accion = jugador_actual.turno(server);
             match accion {

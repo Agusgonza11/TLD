@@ -5,10 +5,9 @@ use std::{
     sync::{Arc, Mutex},
     thread,
 };
-
 use libreria::custom_error::CustomError;
 
-use crate::juego::Juego;
+use crate::{juego::Juego, mensaje::Mensaje};
 
 #[derive(Clone)]
 pub struct Server {
@@ -53,16 +52,8 @@ impl Server {
         // Asigna un ID único al jugador
         let player_id = self.next_player_id;
         self.next_player_id += 1;
-
         let player_connection = Arc::new(Mutex::new(stream));
         self.conexiones_jugadores.insert(player_id, player_connection.clone());
-
-        let mensaje_registro = format!(
-            "Registrado correctamente con el id '{}', esperando jugadores para iniciar el juego.",
-            player_id
-        );
-        Server::enviar_mensaje(&mut player_connection.lock().unwrap(), mensaje_registro.as_bytes().to_vec())?;
-
         self.juego.agregar_jugador();
         let self_clone = self.clone();
         let handle = thread::spawn(move || {
@@ -93,26 +84,27 @@ impl Server {
     }
 
     fn esperar_jugadores(&self) {
-        let mensaje_espera = "Esperando mas jugadores para comenzar el juego...";
         for (_, connection) in &self.conexiones_jugadores {
             let mut connection = connection.lock().unwrap();
-            Server::enviar_mensaje(&mut connection, mensaje_espera.as_bytes().to_vec()).unwrap();
+            let mensaje_serializado = serde_json::to_string(&Mensaje::Esperando).unwrap();
+            Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec()).unwrap();
         }
 
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
 
     pub fn preguntar_comienzo_juego(&self) {
-        if self.conexiones_jugadores.len() <2 {
+        if self.conexiones_jugadores.len() < 2 {
             println!("Esperando más jugadores para comenzar el juego...");
             self.esperar_jugadores();
         } else {
-            let mensaje_pregunta = "¿Desean comenzar el juego? (si/no)";
             let mut respuestas: HashMap<usize, String> = HashMap::new();
             
             for (_, connection) in &self.conexiones_jugadores {
                 let mut connection = connection.lock().unwrap();
-                Server::enviar_mensaje(&mut connection, mensaje_pregunta.as_bytes().to_vec()).unwrap();
+                let mensaje_serializado = serde_json::to_string(&Mensaje::PreguntaComienzo).unwrap();
+                println!("aca esta el {}", mensaje_serializado);
+                Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec()).unwrap();
             }
             
             for (player_id, connection) in &self.conexiones_jugadores {

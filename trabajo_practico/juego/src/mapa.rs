@@ -1,11 +1,11 @@
 use std::{io::Write, net::TcpStream};
 
-use barcos::flota::Flota;
+use barcos::{barco::Barco, flota::Flota};
 use libreria::custom_error::CustomError;
 use ndarray::Array2;
 use rand::Rng;
 
-use crate::server::Server;
+use crate::{mensaje::Mensaje, server::Server};
 
 
 #[derive(Clone)]
@@ -98,7 +98,7 @@ impl Mapa {
             println!();
         }
     }
-    pub fn enviar_tablero(&self, id: String, server: &mut Server) -> Result<(), CustomError> {
+    pub fn enviar_tablero(&self, id: String, server: &mut Server, barcos: &Vec<Barco>) -> Result<(), CustomError> {
         let jugador: char = id.chars().next().ok_or(CustomError::ErrorAceptandoConexion)?;
 
         let mut tablero_ocultado = self.tablero.clone();
@@ -112,14 +112,20 @@ impl Mapa {
             .map(|row| row.to_vec())
             .collect();
 
-        let tablero_serializado = serde_json::to_string(&tablero_vec)
-            .map_err(|_| CustomError::ErrorSerializacion)?;
+        //let tablero_serializado = serde_json::to_string(&tablero_vec)
+        //    .map_err(|_| CustomError::ErrorSerializacion)?;
         //println!("aca esta {:?}", tablero_serializado);
-        let mensaje = format!("TABLERO:{}", tablero_serializado);
+        //let mensaje = format!("TABLERO:{}", tablero_serializado);
+        let mut barcos_serializados: Vec<Vec<char>> = Vec::new();
+        for (i, barco) in barcos.iter().enumerate() {
+            let cadena = format!("{}: ID: {}, Posicion: {:?}", i, barco.id, barco.posiciones);
+            barcos_serializados.push(cadena.chars().collect());
+        }
 
         if let Some(conexion) = server.conexiones_jugadores.get(&id.parse().unwrap_or_default()) {
             let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion)?;
-            Self::enviar_mensaje(&conexion, mensaje.as_bytes().to_vec())?;
+            let mensaje_serializado = serde_json::to_string(&Mensaje::Tablero(tablero_vec, barcos_serializados)).unwrap();
+            Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
         }
 
         Ok(())

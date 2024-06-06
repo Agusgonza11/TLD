@@ -2,7 +2,7 @@ use acciones::{accion::Accion, ataque::Ataque, movimiento::Movimiento};
 use barcos::{barco::Barco, estado_barco::EstadoBarco};
 use libreria::{constantes::{ATAQ, MOV}, custom_error::CustomError};
 
-use crate::{ mapa::Mapa, server::Server}  ;
+use crate::{ mapa::Mapa, mensaje::Mensaje, server::Server}  ;
 use std::{io::{self, Write}, net::TcpStream, vec};
 
 
@@ -48,12 +48,11 @@ impl Jugador {
         }
     }
 
-    pub fn enviar_instrucciones(&self, server: &mut Server) -> Result<(), CustomError> {
-        let mensaje = format!("Puntos:{}:\nElige una acción (m: moverse, a: atacar, t: abrir la tienda, s: saltar)", self.puntos);
-    
+    pub fn enviar_instrucciones(&self, server: &mut Server) -> Result<(), CustomError> {    
         if let Some(conexion) = server.conexiones_jugadores.get(&self.id) {
             let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion)?;
-            Self::enviar_mensaje(&conexion, mensaje.as_bytes().to_vec())?;
+            let mensaje_serializado = serde_json::to_string(&Mensaje::Puntos(self.puntos)).unwrap();
+            Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
         }
     
         Ok(())
@@ -70,7 +69,7 @@ impl Jugador {
     /// `Accion` - Acción realizada por el jugador
     pub fn turno(&mut self,server:&mut Server) -> Accion {
         self.mapa.imprimir_tablero(self.id.to_string());
-        let _ = self.mapa.enviar_tablero(self.id.to_string(), server);
+        let _ = self.mapa.enviar_tablero(self.id.to_string(), server, &self.barcos);
         loop {
             let _ = self.enviar_instrucciones(server);
             let mut accion = String::new();
