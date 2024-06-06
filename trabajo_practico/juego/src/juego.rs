@@ -49,7 +49,6 @@ impl Juego {
         while !self.finalizo() {
             let jugador_actual = &mut self.jugadores[self.turno];
             println!("Turno del jugador {}", jugador_actual.id);
-            Self::imprimir_acciones();
             if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
                 let mut conexion = conexion.lock().unwrap();
                 let mensaje_serializado = serde_json::to_string(&Mensaje::RealiceAccion).unwrap();
@@ -122,14 +121,7 @@ impl Juego {
         }
         false
     }
-    /// Función que imprime las acciones que puede realizar un jugador
-    fn imprimir_acciones() {
-        println!("Realice una accion: ");
-        println!("Puede moverse: (m)");
-        println!("Puede atacar: (a)");
-        println!("Puede abrir la tienda: (t)");
-        println!("Puede saltar turno: (s)");
-    }
+
     /// Función que agrega un jugador al juego
     /// 
     /// # Args
