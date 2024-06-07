@@ -111,7 +111,6 @@ impl Server {
             for (_, connection) in &self.conexiones_jugadores {
                 let mut connection = connection.lock().unwrap();
                 let mensaje_serializado = serde_json::to_string(&Mensaje::PreguntaComienzo).unwrap();
-                println!("aca esta el {}", mensaje_serializado);
                 Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec()).unwrap();
             }
             
