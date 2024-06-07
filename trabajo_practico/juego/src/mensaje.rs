@@ -18,4 +18,6 @@ pub enum Mensaje {
     Tablero(Vec<Vec<char>>, Vec<(usize, Vec<(i32, i32)>)>),
     Accion(Instruccion),
     RepetirAccion(String, Vec<(usize, Vec<(i32, i32)>)>),
+    EventoSorpresa,
+    EventoSorpresaResultado(bool),
 }

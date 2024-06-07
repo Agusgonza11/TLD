@@ -73,6 +73,19 @@ impl Cliente {
                                     let mensaje_serializado = serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
                                     self.enviar_respuesta(mensaje_serializado.as_str())?;
                                 }
+                                Mensaje::EventoSorpresa => {
+                                    println!("Un cargamento con recursos aparecio de repente! se el primero en reclamarlo ingresando: primero");
+                                    let mut respuesta = String::new();
+                                    io::stdin().read_line(&mut respuesta).expect("Error al leer la respuesta.");
+                                    self.enviar_respuesta(respuesta.trim())?;
+                                }
+                                Mensaje::EventoSorpresaResultado(resultado) => {
+                                    if resultado {
+                                        println!("Felicidades, fuiste el primero en reclamar el premio, ahora es tuyo");
+                                    } else {
+                                        println!("Una lastima, alguien se te adelanto, perdiste el premio");
+                                    }
+                                }
                                 _ => {}
                             }
                         }

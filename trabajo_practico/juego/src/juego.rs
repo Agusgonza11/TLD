@@ -1,6 +1,7 @@
 use std::{io::Write, net::TcpStream, sync::MutexGuard};
 
 use barcos::estado_barco::EstadoBarco;
+use libreria::constantes::EVENTO_SORPRESA;
 use libreria::custom_error::CustomError;
 use crate::juego::CustomError::AccionInvalida;
 use crate::{jugador::Jugador, mapa::Mapa, mensaje::{Instruccion, Mensaje}, server::Server};
@@ -36,6 +37,7 @@ impl Juego {
             turno,
         }
     }
+
     /// Función que inicia el juego
     /// 
     /// # Returns
@@ -46,7 +48,11 @@ impl Juego {
     /// 
     /// `CustomError` - Error personalizado
     pub fn iniciar_juego(&mut self, server: &mut Server) -> Result<(), CustomError> {
+        let mut rondas = 0;
         while !self.finalizo() {
+            if rondas == EVENTO_SORPRESA {
+                server.crear_evento_sorpresa(&mut self.jugadores)
+            }
             println!("Turno del jugador {}", self.jugadores[self.turno].id);
             if let Some(conexion) = server.conexiones_jugadores.get(&self.jugadores[self.turno].id) {
                 let mut conexion = conexion.lock().unwrap();
@@ -88,6 +94,7 @@ impl Juego {
             }
             self.jugadores[self.turno].enviar_instrucciones(server);
             self.turno = (self.turno + 1) % self.jugadores.len();
+            rondas += 1;
         }
         Ok(())
     }
