@@ -136,13 +136,13 @@ impl Cliente {
         .expect("Error al leer la entrada");
         
         match accion.trim() {
-            "m" => return Self::moverse(barcos),
-            "a" => return Self::atacar(barcos),
-            "t" => return Instruccion::Tienda,
-            "s" => return Instruccion::Saltar,
+            "m" => Self::moverse(barcos),
+            "a" => Self::atacar(barcos),
+            "t" => Instruccion::Tienda,
+            "s" => Instruccion::Saltar,
             _ => {
                 println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s).");
-                return Instruccion::Saltar
+                Instruccion::Saltar
             },   
         }
         
@@ -185,7 +185,7 @@ impl Cliente {
 
         let cordenadas = Self::pedir_coordenadas();
 
-        return (barco_seleccionado, cordenadas)
+        (barco_seleccionado, cordenadas)
     }
 
 

@@ -53,7 +53,7 @@ impl Server {
         let player_id = self.next_player_id;
         self.next_player_id += 1;
         let player_connection = Arc::new(Mutex::new(stream));
-        self.conexiones_jugadores.insert(player_id, player_connection.clone());
+        self.conexiones_jugadores.insert(player_id, player_connection);
         self.juego.agregar_jugador();
         let self_clone = self.clone();
         let handle = thread::spawn(move || {
@@ -75,7 +75,7 @@ impl Server {
         }
     }
 
-    fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
+    fn enviar_mensaje(stream: &mut TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         let result_flush = stream.flush();
@@ -92,7 +92,7 @@ impl Server {
     }
 
     fn esperar_jugadores(&self) {
-        for (_, connection) in &self.conexiones_jugadores {
+        for connection in self.conexiones_jugadores.values() {
             let mut connection = connection.lock().unwrap();
             let mensaje_serializado = serde_json::to_string(&Mensaje::Esperando).unwrap();
             Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec()).unwrap();
@@ -108,7 +108,7 @@ impl Server {
         } else {
             let mut respuestas: HashMap<usize, String> = HashMap::new();
             
-            for (_, connection) in &self.conexiones_jugadores {
+            for connection in self.conexiones_jugadores.values() {
                 let mut connection = connection.lock().unwrap();
                 let mensaje_serializado = serde_json::to_string(&Mensaje::PreguntaComienzo).unwrap();
                 Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec()).unwrap();
