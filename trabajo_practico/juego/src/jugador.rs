@@ -48,19 +48,17 @@ impl Jugador {
         }
     }
 
-    pub fn enviar_instrucciones(&self, server: &Server) -> Result<(), CustomError> {    
+    pub fn enviar_instrucciones(&self, server: &Server) {    
         if let Some(conexion) = server.conexiones_jugadores.get(&self.id) {
-            let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion)?;
+            let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion).unwrap();
             let mensaje_serializado = serde_json::to_string(&Mensaje::Puntos(self.puntos)).unwrap();
-            Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
+            let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
         }
     
-        Ok(())
     }
 
     pub fn manejar_turno(&mut self, server: &Server) {
         let _ = self.mapa.enviar_tablero(self.id.to_string(), server, &self.barcos);
-        let _ = self.enviar_instrucciones(server);
     }
     
     /// Función que permite al jugador moverse en el tablero

@@ -86,7 +86,7 @@ impl Juego {
                     }
                 }
             }
-    
+            self.jugadores[self.turno].enviar_instrucciones(server);
             self.turno = (self.turno + 1) % self.jugadores.len();
         }
         Ok(())
