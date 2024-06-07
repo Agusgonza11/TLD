@@ -67,10 +67,11 @@ impl Cliente {
                                     self.enviar_respuesta(mensaje_serializado.as_str())?;
 
                                 },
-                                Mensaje::RepetirAccion(mensaje) => {
+                                Mensaje::RepetirAccion(mensaje, barcos) => {
                                     println!("{}", mensaje);
-                                    //let accion = Self::pedir_instrucciones(barcos);
-
+                                    let accion = Self::pedir_instrucciones(barcos);
+                                    let mensaje_serializado = serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
+                                    self.enviar_respuesta(mensaje_serializado.as_str())?;
                                 }
                                 _ => {}
                             }
@@ -93,6 +94,7 @@ impl Cliente {
     pub fn enviar_respuesta(&mut self, respuesta: &str) -> Result<(), CustomError> {
         let mut stream = self.shared_stream.lock().unwrap();
         stream.write_all(respuesta.as_bytes()).map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        //stream.flush().map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
 

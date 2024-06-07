@@ -17,5 +17,5 @@ pub enum Mensaje {
     Puntos(usize),
     Tablero(Vec<Vec<char>>, Vec<(usize, Vec<(i32, i32)>)>),
     Accion(Instruccion),
-    RepetirAccion(String),
+    RepetirAccion(String, Vec<(usize, Vec<(i32, i32)>)>),
 }

@@ -55,33 +55,44 @@ impl Juego {
                 Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec())?;
             }
             jugador_actual.manejar_turno(server);
-            match server.recibir_mensaje(jugador_actual.id) {
-                Ok(mensaje_serializado) => {
-                    match serde_json::from_str::<Mensaje>(&mensaje_serializado) {
-                        Ok(mensaje) => {
-                            if let Mensaje::Accion(instruccion) = mensaje {
-                                //let mut conexion = conexion.lock().unwrap();
-                                if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
-                                    let mut conexion = conexion.lock().unwrap();
-                                    Self::manejar_instruccion(instruccion, jugador_actual, &mut conexion)?;
+            
+            loop {
+                match server.recibir_mensaje(jugador_actual.id) {
+                    Ok(mensaje_serializado) => {
+                        match serde_json::from_str::<Mensaje>(&mensaje_serializado) {
+                            Ok(mensaje) => {
+                                if let Mensaje::Accion(instruccion) = mensaje {
+                                    if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
+                                        let mut conexion = conexion.lock().unwrap();
+                                        match Self::manejar_instruccion(instruccion, jugador_actual, &mut conexion) {
+                                            Ok(_) => break, // Salir del loop si la instrucción se maneja correctamente
+                                            Err(e) => {
+                                                println!("Error al manejar la instrucción: {}", e);
+                                                // Aquí puedes decidir si quieres seguir intentando o romper el loop
+                                                // Si decides seguir intentando, el loop continuará y se intentará recibir otro mensaje
+                                            }
+                                        }
+                                    }
                                 }
-                            } 
-                        }
-                        Err(err) => {
-                            println!("Error al deserializar el mensaje: {}", err);
+                            }
+                            Err(err) => {
+                                println!("Error al deserializar el mensaje: {}", err);
+                                break; // Salir del loop si hay un error de deserialización
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    println!("Error al recibir mensaje del cliente: {:?}", e);
-                    break;
+                    Err(e) => {
+                        println!("Error al recibir mensaje del cliente: {:?}", e);
+                        break; // Salir del loop si hay un error al recibir el mensaje
+                    }
                 }
             }
-            
+    
             self.turno = (self.turno + 1) % self.jugadores.len();
         }
         Ok(())
     }
+    
 
     fn manejar_instruccion(instruccion: Instruccion, jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
         match instruccion {
@@ -149,14 +160,14 @@ impl Juego {
     fn procesar_movimiento(barco: Barco, cordenadas: (i32, i32), jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
         if barco.estado == EstadoBarco::Golpeado || barco.estado == EstadoBarco::Hundido {
             let mensaje = "El barco seleccionado esta golpeado, no se puede mover, elija otra accion u otro barco.";
-            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned())).unwrap();
+            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned(), jugador_actual.mapa.serializar_barcos(&jugador_actual.barcos))).unwrap();
             Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
             return Err(AccionInvalida)
         }
         let coordenadas_contiguas = jugador_actual.mapa.obtener_coordenadas_contiguas(cordenadas,barco.tamaño);
         if coordenadas_contiguas.is_empty() {
             let mensaje = "No hay suficientes espacios contiguos disponibles para mover el barco.";
-            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned())).unwrap();
+            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned(),jugador_actual.mapa.serializar_barcos(&jugador_actual.barcos))).unwrap();
             Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
             return Err(AccionInvalida)
         }

@@ -107,20 +107,11 @@ impl Mapa {
                 *cell = '.';
             }
         }
-
         let tablero_vec: Vec<Vec<char>> = tablero_ocultado.outer_iter()
             .map(|row| row.to_vec())
             .collect();
 
-        //let tablero_serializado = serde_json::to_string(&tablero_vec)
-        //    .map_err(|_| CustomError::ErrorSerializacion)?;
-        //println!("aca esta {:?}", tablero_serializado);
-        //let mensaje = format!("TABLERO:{}", tablero_serializado);
-        let mut barcos_serializados = Vec::new();
-        for (_, barco) in barcos.iter().enumerate() {
-            let barco = barco.obtener_datos();
-            barcos_serializados.push(barco);
-        }
+        let barcos_serializados = self.serializar_barcos(barcos);
 
         if let Some(conexion) = server.conexiones_jugadores.get(&id.parse().unwrap_or_default()) {
             let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion)?;
@@ -131,6 +122,14 @@ impl Mapa {
         Ok(())
     }
 
+    pub fn serializar_barcos(&self, barcos: &Vec<Barco>) -> Vec<(usize, Vec<(i32, i32)>)> {
+        let mut barcos_serializados = Vec::new();
+        for (_, barco) in barcos.iter().enumerate() {
+            let barco = barco.obtener_datos();
+            barcos_serializados.push(barco);
+        }
+        barcos_serializados
+    }
 
     
     /// Funcion que actualiza la posición de un barco en el tablero
