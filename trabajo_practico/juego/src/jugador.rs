@@ -61,7 +61,6 @@ impl Jugador {
     pub fn manejar_turno(&mut self, server: &Server) {
         let _ = self.mapa.enviar_tablero(self.id.to_string(), server, &self.barcos);
         let _ = self.enviar_instrucciones(server);
-
     }
     
     /// Función que permite al jugador moverse en el tablero
@@ -74,6 +73,19 @@ impl Jugador {
     /// 
     /// `Accion` - Acción de movimiento realizada por el jugador
 
+    pub fn actualizar_posicion_barco(&mut self, coordenadas_contiguas: Vec<(i32, i32)>, barco: usize) {
+        let mut coordenadas_destino = vec![];
+        for (i, &coordenada) in coordenadas_contiguas.iter().enumerate() {
+            coordenadas_destino.push(coordenada);
+            if i == self.barcos[barco].tamaño - 1 {
+                break;
+            }
+        }
+
+        if self.mapa.actualizar_posicion_barco(&mut self.barcos[barco], coordenadas_destino.clone(), self.id) {
+            self.barcos[barco].actualizar_posicion(coordenadas_destino);
+        }
+    }
     
     pub fn obtener_barco(&self, barco_seleccionado: usize) -> Barco {
         self.barcos[barco_seleccionado].clone()
@@ -95,12 +107,13 @@ impl Jugador {
     /// 
     /// `usize` - Puntos ganados por el jugador
     
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32), mapa: &mut Mapa) -> usize{
+    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32), jugador: &mut Jugador) -> usize{
         let mut puntos = 0;
         let mut barcos_golpeados = false;
         let mut barcos_hundidos = Vec::new();
-
-        for barco in &mut self.barcos {
+        for barco in &mut jugador.barcos {
+            println!("Tengo barco {:?}", barco);
+            println!("cordenadas: {:?}", coordenadas_ataque);
             if barco.posiciones.contains(&coordenadas_ataque) {
                 barcos_golpeados = true;
                 barco.posiciones.retain(|&pos| pos != coordenadas_ataque); 
@@ -129,7 +142,7 @@ impl Jugador {
         self.barcos.retain(|barco| barco.estado != EstadoBarco::Hundido);
 
         for coordenadas in barcos_hundidos {
-            mapa.marcar_hundido(coordenadas);
+            jugador.mapa.marcar_hundido(coordenadas);
         }
 
         if !barcos_golpeados {

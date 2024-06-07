@@ -1,6 +1,6 @@
 use std::{io::Write, net::TcpStream, sync::MutexGuard};
 
-use barcos::{barco::Barco, estado_barco::EstadoBarco};
+use barcos::estado_barco::EstadoBarco;
 use libreria::custom_error::CustomError;
 use crate::juego::CustomError::AccionInvalida;
 use crate::{jugador::Jugador, mapa::Mapa, mensaje::{Instruccion, Mensaje}, server::Server};
@@ -98,8 +98,7 @@ impl Juego {
     fn manejar_instruccion(instruccion: Instruccion, jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>, jugadores: Vec<Jugador>) -> Result<(), CustomError> {
         match instruccion {
             Instruccion::Movimiento(barco_id, cordenadas) => {
-                let barco = jugador_actual.obtener_barco(barco_id);
-                Self::procesar_movimiento(barco, cordenadas, jugador_actual, conexion)?;
+                Self::procesar_movimiento(barco_id, cordenadas, jugador_actual, conexion)?;
                 //Self::procesar_movimiento(movimiento, &mut self.jugadores);
             }
             Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
@@ -158,7 +157,8 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador con el movimiento procesado
-    fn procesar_movimiento(barco: Barco, cordenadas: (i32, i32), jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
+    fn procesar_movimiento(barco_id: usize, cordenadas: (i32, i32), jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
+        let barco = jugador_actual.obtener_barco(barco_id);
         if barco.estado == EstadoBarco::Golpeado || barco.estado == EstadoBarco::Hundido {
             let mensaje = "El barco seleccionado esta golpeado, no se puede mover, elija otra accion u otro barco.";
             let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned(), jugador_actual.mapa.serializar_barcos(&jugador_actual.barcos))).unwrap();
@@ -172,14 +172,9 @@ impl Juego {
             Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
             return Err(AccionInvalida)
         }
-        let mut nuevas_posiciones = vec![];
-        for (i, &coordenada) in coordenadas_contiguas.iter().enumerate() {
-            nuevas_posiciones.push(coordenada);
-            if i == barco.tamaño - 1 {
-                break;
-            }
-        }
-        jugador_actual.mapa.actualizar_posicion_barco(&barco.posiciones, &nuevas_posiciones, jugador_actual.id);
+
+
+        jugador_actual.actualizar_posicion_barco(coordenadas_contiguas, barco_id);
 
         Ok(())
     }
@@ -203,7 +198,7 @@ impl Juego {
         for jugador in jugadores.iter_mut() {
             let mut jugador_atacado = jugador.clone();
             if jugador.id != jugador_actual.id {
-                let puntos = jugador.procesar_ataque(coordenadas_ataque, &mut jugador_atacado.mapa);
+                let puntos = jugador.procesar_ataque(coordenadas_ataque, &mut jugador_atacado);
                 puntos_ganados += puntos;
                 if puntos > 0 {
                     jugador.mapa.marcar_hundido(coordenadas_ataque);
