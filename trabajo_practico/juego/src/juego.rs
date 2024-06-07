@@ -64,7 +64,8 @@ impl Juego {
                                 if let Mensaje::Accion(instruccion) = mensaje {
                                     if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
                                         let mut conexion = conexion.lock().unwrap();
-                                        match Self::manejar_instruccion(instruccion, jugador_actual, &mut conexion) {
+                                        let jugadores = server.juego.jugadores.clone();
+                                        match Self::manejar_instruccion(instruccion, jugador_actual, &mut conexion, jugadores) {
                                             Ok(_) => break, // Salir del loop si la instrucción se maneja correctamente
                                             Err(e) => {
                                                 println!("Error al manejar la instrucción: {}", e);
@@ -94,7 +95,7 @@ impl Juego {
     }
     
 
-    fn manejar_instruccion(instruccion: Instruccion, jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
+    fn manejar_instruccion(instruccion: Instruccion, jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>, jugadores: Vec<Jugador>) -> Result<(), CustomError> {
         match instruccion {
             Instruccion::Movimiento(barco_id, cordenadas) => {
                 let barco = jugador_actual.obtener_barco(barco_id);
@@ -102,7 +103,7 @@ impl Juego {
                 //Self::procesar_movimiento(movimiento, &mut self.jugadores);
             }
             Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
-                Self::procesar_ataque(coordenadas_ataque, jugador_actual)
+                Self::procesar_ataque(coordenadas_ataque, jugador_actual, jugadores);
             }
             Instruccion::Saltar => {
                 println!("Jugador salta su turno.");
@@ -197,12 +198,19 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador con el ataque procesado
-    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_actual: &mut Jugador) {
+    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_actual: &mut Jugador, mut jugadores: Vec<Jugador>) {
         let mut puntos_ganados = 0;
-        let puntos = jugador_actual.procesar_ataque(coordenadas_ataque);
-        puntos_ganados += puntos;
-        if puntos > 0 {
-            jugador_actual.mapa.marcar_hundido(coordenadas_ataque);
+        for jugador in jugadores.iter_mut() {
+            let mut jugador_atacado = jugador.clone();
+            if jugador.id != jugador_actual.id {
+                let puntos = jugador.procesar_ataque(coordenadas_ataque, &mut jugador_atacado.mapa);
+                puntos_ganados += puntos;
+                if puntos > 0 {
+                    jugador.mapa.marcar_hundido(coordenadas_ataque);
+                }
+            
+            }
+
         }
         jugador_actual.puntos += puntos_ganados;
     }

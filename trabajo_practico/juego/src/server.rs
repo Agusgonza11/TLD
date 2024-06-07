@@ -14,7 +14,7 @@ pub struct Server {
     arc_server: Arc<TcpListener>,
     jugadores: Arc<Mutex<Vec<thread::JoinHandle<()>>>>,
     pub conexiones_jugadores: HashMap<usize, Arc<Mutex<TcpStream>>>,
-    juego: Juego,
+    pub juego: Juego,
     next_player_id: usize,
     jugadores_conectados: usize,
 }

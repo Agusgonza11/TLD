@@ -95,7 +95,7 @@ impl Jugador {
     /// 
     /// `usize` - Puntos ganados por el jugador
     
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> usize{
+    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32), mapa: &mut Mapa) -> usize{
         let mut puntos = 0;
         let mut barcos_golpeados = false;
         let mut barcos_hundidos = Vec::new();
@@ -129,7 +129,7 @@ impl Jugador {
         self.barcos.retain(|barco| barco.estado != EstadoBarco::Hundido);
 
         for coordenadas in barcos_hundidos {
-            self.mapa.marcar_hundido(coordenadas);
+            mapa.marcar_hundido(coordenadas);
         }
 
         if !barcos_golpeados {
