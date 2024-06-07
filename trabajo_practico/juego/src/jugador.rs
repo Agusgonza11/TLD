@@ -1,9 +1,9 @@
-use acciones::{accion::Accion, ataque::Ataque, movimiento::Movimiento};
+use acciones::accion::Accion;
 use barcos::{barco::Barco, estado_barco::EstadoBarco};
-use libreria::constantes::{ATAQ, MOV};
+use libreria::custom_error::CustomError;
 
-use crate:: mapa::Mapa  ;
-use std::{io::{self, Write}, vec};
+use crate::{ mapa::Mapa, mensaje::Mensaje, server::Server}  ;
+use std::{io::Write, net::TcpStream, vec};
 
 
 #[derive(Clone)]
@@ -47,50 +47,20 @@ impl Jugador {
             mapa: mapa.clone(),
         }
     }
-    /// Función que permite al jugador realizar un turno
-    /// 
-    /// # Args
-    /// 
-    /// `tablero` - Mapa en el que se encuentra el jugador
-    /// 
-    /// # Returns
-    /// 
-    /// `Accion` - Acción realizada por el jugador
-    pub fn turno(&mut self) -> Accion {
-        self.mapa.imprimir_tablero(self.id.to_string());
 
-        loop {
-            let mut accion = String::new();
-            println!("Puntos: {}", self.puntos);
-            println!("Elige una accion (m: moverse, a: atacar, t: abrir la tienda, s:saltar): ");
-            io::stdin()
-                .read_line(&mut accion)
-                .expect("Error al leer la entrada");
-
-            match accion.trim() {
-                "m" => return self.moverse(),
-                "a" => return self.atacar(),
-                "t" => return self.abrir_tienda(),
-                "s" => return Accion::Saltar,
-                _ => println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s)."),
-            }
+    pub fn enviar_instrucciones(&self, server: &Server) {    
+        if let Some(conexion) = server.conexiones_jugadores.get(&self.id) {
+            let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion).unwrap();
+            let mensaje_serializado = serde_json::to_string(&Mensaje::Puntos(self.puntos)).unwrap();
+            let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
         }
+    
     }
-    /// Función que permite al jugador atacar a un barco enemigo
-    /// 
-    /// # Returns
-    /// 
-    /// `Accion` - Acción de ataque realizada por el jugador
-    fn atacar(&self) -> Accion {
-        let (barco_seleccionado, cordenadas_atacadas) = self.pedir_instrucciones(ATAQ);
-        let id_barco = barco_seleccionado.id;
-        let cordenadas_ataque = cordenadas_atacadas;
-        return Accion::Atacar(Ataque {
-            jugador_id: self.id,
-            id_barco,
-            cordenadas_ataque,
-        });
+
+    pub fn manejar_turno(&mut self, server: &Server) {
+        let _ = self.mapa.enviar_tablero(self.id.to_string(), server, &self.barcos);
     }
+    
     /// Función que permite al jugador moverse en el tablero
     ///
     /// # Args
@@ -100,106 +70,26 @@ impl Jugador {
     /// # Returns
     /// 
     /// `Accion` - Acción de movimiento realizada por el jugador
-    fn moverse(&mut self) -> Accion {
-        
-        let (barco_seleccionado, coordenadas_destino) = self.pedir_instrucciones(MOV);
-        if barco_seleccionado.estado == EstadoBarco::Golpeado || barco_seleccionado.estado == EstadoBarco::Hundido{
-            println!("El barco seleccionado esta golpeado, no se puede mover, elija otra accion u otro barco.");
-            return self.turno();
-         }
-        let id_barco = barco_seleccionado.id;
-        let coordenadas_origen = barco_seleccionado.posiciones[0];
-        
-        let coordenadas_contiguas = self.mapa.obtener_coordenadas_contiguas(coordenadas_destino,barco_seleccionado.tamaño);
-        
 
-        if coordenadas_contiguas.is_empty() {
-            println!("No hay suficientes espacios contiguos disponibles para mover el barco.");
-            return self.moverse();
-        }
-    
-        let mut nuevas_posiciones = vec![];
+    pub fn actualizar_posicion_barco(&mut self, coordenadas_contiguas: Vec<(i32, i32)>, barco: usize) {
+        let mut coordenadas_destino = vec![];
         for (i, &coordenada) in coordenadas_contiguas.iter().enumerate() {
-            nuevas_posiciones.push(coordenada);
-            if i == barco_seleccionado.tamaño - 1 {
+            coordenadas_destino.push(coordenada);
+            if i == self.barcos[barco].tamaño - 1 {
                 break;
             }
         }
-    
-        return Accion::Moverse(Movimiento {
-            jugador_id: self.id,
-            id_barco,
-            coordenadas_origen,
-            cordenadas_destino: nuevas_posiciones,
-        });
+
+        if self.mapa.actualizar_posicion_barco(&mut self.barcos[barco], coordenadas_destino.clone(), self.id) {
+            self.barcos[barco].actualizar_posicion(coordenadas_destino);
+        }
     }
     
-    /// Función que permite al jugador seleccionar un barco y coordenadas para realizar una acción
-    /// 
-    /// # Args
-    /// 
-    /// `accion` - Acción que se realizará con el barco seleccionado
-    /// 
-    /// # Returns
-    /// 
-    /// `(Barco, (i32, i32))` - Tupla con el barco seleccionado y las coordenadas de la acción
-    fn pedir_instrucciones(&self, accion: &str) -> (Barco, (i32, i32)) {
-        println!("Elige un barco para {}:", accion);
-        for (i, barco) in self.barcos.iter().enumerate() {
-            println!("{}: ID: {}, Posicion: {:?}", i, barco.id, barco.posiciones);
-        }
-
-        let mut barco_seleccionado = String::new();
-        io::stdout().flush().expect("Error");
-        io::stdin()
-            .read_line(&mut barco_seleccionado)
-            .expect("Error");
-        let barco_seleccionado: usize = match barco_seleccionado.trim().parse() {
-            Ok(numero) => numero,
-            Err(_) => {
-                println!("Numero de barco invalido. Por favor, ingrese un numero dentro del rango.");
-                return self.pedir_instrucciones(accion);
-            }
-        };
-
-        if barco_seleccionado >= self.barcos.len() {
-            println!("Numero de barco invalido. Por favor, elige un numero dentro del rango.");
-            return self.pedir_instrucciones(accion);
-        }
-
-        let barco = self.barcos[barco_seleccionado].clone();
-        let coordenadas = Self::pedir_coordenadas();
-
-        (barco, coordenadas)
-    }
-    /// Función que permite al jugador ingresar coordenadas
-    /// 
-    /// # Returns
-    /// 
-    /// `(i32, i32)` - Tupla con las coordenadas ingresadas por el jugador
-    fn pedir_coordenadas() -> (i32, i32) {
-        loop {
-            println!("Ingresa las coordenadas en formato 'x,y': ");
-
-            let mut coordenadas = String::new();
-            io::stdin()
-                .read_line(&mut coordenadas)
-                .expect("Error al leer la entrada");
-
-            let mut iter = coordenadas.trim().split(',');
-            if let (Some(x_str), Some(y_str)) = (iter.next(), iter.next()) {
-                if let Ok(x) = x_str.trim().parse::<i32>() {
-                    if let Ok(y) = y_str.trim().parse::<i32>() {
-                        return (x, y);
-                    }
-                }
-            }
-
-            println!("Formato de coordenadas incorrecto. Intentalo de nuevo.");
-        }
+    pub fn obtener_barco(&self, barco_seleccionado: usize) -> Barco {
+        self.barcos[barco_seleccionado].clone()
     }
 
-    fn abrir_tienda(&self) -> Accion {
+    fn _abrir_tienda(&self) -> Accion {
         println!("Tienda abierta");
         Accion::Tienda(self.puntos)
     }
@@ -215,12 +105,13 @@ impl Jugador {
     /// 
     /// `usize` - Puntos ganados por el jugador
     
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32), mapa: &mut Mapa) -> usize{
+    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> usize{
         let mut puntos = 0;
         let mut barcos_golpeados = false;
         let mut barcos_hundidos = Vec::new();
-
         for barco in &mut self.barcos {
+            println!("Tengo barco {:?}", barco);
+            println!("cordenadas: {:?}", coordenadas_ataque);
             if barco.posiciones.contains(&coordenadas_ataque) {
                 barcos_golpeados = true;
                 barco.posiciones.retain(|&pos| pos != coordenadas_ataque); 
@@ -249,13 +140,20 @@ impl Jugador {
         self.barcos.retain(|barco| barco.estado != EstadoBarco::Hundido);
 
         for coordenadas in barcos_hundidos {
-            mapa.marcar_hundido(coordenadas);
+            self.mapa.marcar_hundido(coordenadas);
         }
 
         if !barcos_golpeados {
             println!("No le pegaste a nada, burro irrecuperable.");
         }
         puntos
+    }
+    fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
+        let result_stream = stream.write_all(&msg);
+        result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        let result_flush = stream.flush();
+        result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        Ok(())
     }
     
 }

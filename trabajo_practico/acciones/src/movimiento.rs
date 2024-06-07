@@ -1,3 +1,6 @@
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Movimiento {
     pub jugador_id: usize,
     pub id_barco: usize,

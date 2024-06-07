@@ -20,4 +20,14 @@ impl Barco {
             estado: EstadoBarco::Sano,
         }
     }
+
+    pub fn obtener_datos(&self) -> (usize, Vec<(i32, i32)>) {
+        return (self.id.clone(), self.posiciones.clone())
+    }
+
+    pub fn actualizar_posicion(&mut self, nueva_posicion: Vec<(i32, i32)>) {
+        println!("antiguas posiciones {:?}", self.posiciones);
+        self.posiciones = nueva_posicion;
+        println!("nuevas posiciones {:?}", self.posiciones);
+    }
 }

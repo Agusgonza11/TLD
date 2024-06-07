@@ -1,6 +1,11 @@
-use barcos::flota::Flota;
+use std::{io::Write, net::TcpStream};
+
+use barcos::{barco::Barco, flota::Flota};
+use libreria::custom_error::CustomError;
 use ndarray::Array2;
 use rand::Rng;
+
+use crate::{mensaje::Mensaje, server::Server};
 
 
 #[derive(Clone)]
@@ -93,6 +98,40 @@ impl Mapa {
             println!();
         }
     }
+    pub fn enviar_tablero(&self, id: String, server: &Server, barcos: &Vec<Barco>) -> Result<(), CustomError> {
+        let jugador: char = id.chars().next().ok_or(CustomError::ErrorAceptandoConexion)?;
+
+        let mut tablero_ocultado = self.tablero.clone();
+        for ((_, _), cell) in tablero_ocultado.indexed_iter_mut() {
+            if *cell != '.' && *cell != jugador {
+                *cell = '.';
+            }
+        }
+        let tablero_vec: Vec<Vec<char>> = tablero_ocultado.outer_iter()
+            .map(|row| row.to_vec())
+            .collect();
+
+        let barcos_serializados = self.serializar_barcos(barcos);
+
+        if let Some(conexion) = server.conexiones_jugadores.get(&id.parse().unwrap_or_default()) {
+            let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion)?;
+            let mensaje_serializado = serde_json::to_string(&Mensaje::Tablero(tablero_vec, barcos_serializados)).unwrap();
+            Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
+        }
+
+        Ok(())
+    }
+
+    pub fn serializar_barcos(&self, barcos: &Vec<Barco>) -> Vec<(usize, Vec<(i32, i32)>)> {
+        let mut barcos_serializados = Vec::new();
+        for (_, barco) in barcos.iter().enumerate() {
+            let barco = barco.obtener_datos();
+            barcos_serializados.push(barco);
+        }
+        barcos_serializados
+    }
+
+    
     /// Funcion que actualiza la posición de un barco en el tablero
     /// 
     /// # Args
@@ -106,7 +145,9 @@ impl Mapa {
     /// # Returns
     /// 
     /// `()` - No retorna nada
-    pub fn actualizar_posicion_barco(&mut self, coordenadas_origen: &Vec<(i32, i32)>, coordenadas_destino: &Vec<(i32, i32)>, id: usize) {
+    pub fn actualizar_posicion_barco(&mut self, barco: &mut Barco, coordenadas_destino: Vec<(i32, i32)>, id: usize) -> bool {
+        let mut modifico = false;
+        let coordenadas_origen = barco.posiciones.clone();
         for &(x_origen, y_origen) in coordenadas_origen.iter() {
             if x_origen >= 0 && x_origen < self.tablero.ncols() as i32 && y_origen >= 0 && y_origen < self.tablero.nrows() as i32 {
                 self.tablero[[y_origen as usize, x_origen as usize]] = '.';
@@ -118,11 +159,13 @@ impl Mapa {
         for &(x_destino, y_destino) in coordenadas_destino.iter() {
             println!("Actualizando posición destino: ({}, {})", x_destino, y_destino); // Depuración
             if x_destino >= 0 && x_destino < self.tablero.ncols() as i32 && y_destino >= 0 && y_destino < self.tablero.nrows() as i32 {
+                modifico = true;
                 self.tablero[[y_destino as usize, x_destino as usize]] = id.to_string().chars().next().unwrap(); 
             } else {
                 println!("Coordenada destino fuera de limites: ({}, {})", x_destino, y_destino); 
             }
         }
+        modifico
     }
     
     
@@ -240,5 +283,11 @@ impl Mapa {
         }
         false
     }
-    
+    fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
+        let result_stream = stream.write_all(&msg);
+        result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        let result_flush = stream.flush();
+        result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        Ok(())
+    }
 }
