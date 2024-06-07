@@ -47,24 +47,23 @@ impl Juego {
     /// `CustomError` - Error personalizado
     pub fn iniciar_juego(&mut self, server: &mut Server) -> Result<(), CustomError> {
         while !self.finalizo() {
-            let jugador_actual = &mut self.jugadores[self.turno];
-            println!("Turno del jugador {}", jugador_actual.id);
-            if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
+            println!("Turno del jugador {}", self.jugadores[self.turno].id);
+            if let Some(conexion) = server.conexiones_jugadores.get(&self.jugadores[self.turno].id) {
                 let mut conexion = conexion.lock().unwrap();
                 let mensaje_serializado = serde_json::to_string(&Mensaje::RealiceAccion).unwrap();
                 Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec())?;
             }
-            jugador_actual.manejar_turno(server);
+            self.jugadores[self.turno].manejar_turno(server);
             
             loop {
-                match server.recibir_mensaje(jugador_actual.id) {
+                match server.recibir_mensaje(self.jugadores[self.turno].id) {
                     Ok(mensaje_serializado) => {
                         match serde_json::from_str::<Mensaje>(&mensaje_serializado) {
                             Ok(mensaje) => {
                                 if let Mensaje::Accion(instruccion) = mensaje {
-                                    if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
+                                    if let Some(conexion) = server.conexiones_jugadores.get(&self.jugadores[self.turno].id) {
                                         let mut conexion = conexion.lock().unwrap();
-                                        match Self::manejar_instruccion(instruccion, jugador_actual, &mut conexion, &mut server.juego.jugadores) {
+                                        match Self::manejar_instruccion(instruccion, self.turno, &mut conexion, &mut self.jugadores) {
                                             Ok(_) => break, // Salir del loop si la instrucción se maneja correctamente
                                             Err(e) => {
                                                 println!("Error al manejar la instrucción: {}", e);
@@ -94,10 +93,10 @@ impl Juego {
     }
     
 
-    fn manejar_instruccion(instruccion: Instruccion, jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>, jugadores: &mut Vec<Jugador>) -> Result<(), CustomError> {
+    fn manejar_instruccion(instruccion: Instruccion, jugador_actual: usize, conexion: &mut MutexGuard<'_, TcpStream>, jugadores: &mut Vec<Jugador>) -> Result<(), CustomError> {
         match instruccion {
             Instruccion::Movimiento(barco_id, cordenadas) => {
-                Self::procesar_movimiento(barco_id, cordenadas, jugador_actual, conexion)?;
+                Self::procesar_movimiento(barco_id, cordenadas, jugador_actual, jugadores, conexion)?;
                 //Self::procesar_movimiento(movimiento, &mut self.jugadores);
             }
             Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
@@ -156,24 +155,24 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador con el movimiento procesado
-    fn procesar_movimiento(barco_id: usize, cordenadas: (i32, i32), jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
-        let barco = jugador_actual.obtener_barco(barco_id);
+    fn procesar_movimiento(barco_id: usize, cordenadas: (i32, i32), jugador_actual: usize, jugadores: &mut Vec<Jugador>, conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
+        let barco = jugadores[jugador_actual].obtener_barco(barco_id);
         if barco.estado == EstadoBarco::Golpeado || barco.estado == EstadoBarco::Hundido {
             let mensaje = "El barco seleccionado esta golpeado, no se puede mover, elija otra accion u otro barco.";
-            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned(), jugador_actual.mapa.serializar_barcos(&jugador_actual.barcos))).unwrap();
+            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned(), jugadores[jugador_actual].mapa.serializar_barcos(&jugadores[jugador_actual].barcos))).unwrap();
             Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
             return Err(AccionInvalida)
         }
-        let coordenadas_contiguas = jugador_actual.mapa.obtener_coordenadas_contiguas(cordenadas,barco.tamaño);
+        let coordenadas_contiguas = jugadores[jugador_actual].mapa.obtener_coordenadas_contiguas(cordenadas,barco.tamaño);
         if coordenadas_contiguas.is_empty() {
             let mensaje = "No hay suficientes espacios contiguos disponibles para mover el barco.";
-            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned(),jugador_actual.mapa.serializar_barcos(&jugador_actual.barcos))).unwrap();
+            let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(mensaje.to_owned(),jugadores[jugador_actual].mapa.serializar_barcos(&jugadores[jugador_actual].barcos))).unwrap();
             Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
             return Err(AccionInvalida)
         }
 
 
-        jugador_actual.actualizar_posicion_barco(coordenadas_contiguas, barco_id);
+        jugadores[jugador_actual].actualizar_posicion_barco(coordenadas_contiguas, barco_id);
 
         Ok(())
     }
@@ -192,10 +191,10 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador con el ataque procesado
-    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_actual: &mut Jugador, jugadores: &mut Vec<Jugador>) {
+    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_actual: usize, jugadores: &mut Vec<Jugador>) {
         let mut puntos_ganados = 0;
         for jugador in jugadores.iter_mut() {
-            if jugador.id != jugador_actual.id {
+            if jugador.id != jugador_actual {
                 let puntos = jugador.procesar_ataque(coordenadas_ataque);
                 puntos_ganados += puntos;
                 if puntos > 0 {
@@ -205,7 +204,7 @@ impl Juego {
             }
 
         }
-        jugador_actual.puntos += puntos_ganados;
+        jugadores[jugador_actual].puntos += puntos_ganados;
     }
 
     fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
