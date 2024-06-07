@@ -107,11 +107,11 @@ impl Jugador {
     /// 
     /// `usize` - Puntos ganados por el jugador
     
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32), jugador: &mut Jugador) -> usize{
+    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> usize{
         let mut puntos = 0;
         let mut barcos_golpeados = false;
         let mut barcos_hundidos = Vec::new();
-        for barco in &mut jugador.barcos {
+        for barco in &mut self.barcos {
             println!("Tengo barco {:?}", barco);
             println!("cordenadas: {:?}", coordenadas_ataque);
             if barco.posiciones.contains(&coordenadas_ataque) {
@@ -142,7 +142,7 @@ impl Jugador {
         self.barcos.retain(|barco| barco.estado != EstadoBarco::Hundido);
 
         for coordenadas in barcos_hundidos {
-            jugador.mapa.marcar_hundido(coordenadas);
+            self.mapa.marcar_hundido(coordenadas);
         }
 
         if !barcos_golpeados {

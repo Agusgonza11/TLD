@@ -195,9 +195,8 @@ impl Juego {
     fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_actual: &mut Jugador, jugadores: &mut Vec<Jugador>) {
         let mut puntos_ganados = 0;
         for jugador in jugadores.iter_mut() {
-            let mut jugador_atacado = jugador.clone();
             if jugador.id != jugador_actual.id {
-                let puntos = jugador.procesar_ataque(coordenadas_ataque, &mut jugador_atacado);
+                let puntos = jugador.procesar_ataque(coordenadas_ataque);
                 puntos_ganados += puntos;
                 if puntos > 0 {
                     jugador.mapa.marcar_hundido(coordenadas_ataque);
