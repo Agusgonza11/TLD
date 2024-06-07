@@ -64,8 +64,7 @@ impl Juego {
                                 if let Mensaje::Accion(instruccion) = mensaje {
                                     if let Some(conexion) = server.conexiones_jugadores.get(&jugador_actual.id) {
                                         let mut conexion = conexion.lock().unwrap();
-                                        let jugadores = server.juego.jugadores.clone();
-                                        match Self::manejar_instruccion(instruccion, jugador_actual, &mut conexion, jugadores) {
+                                        match Self::manejar_instruccion(instruccion, jugador_actual, &mut conexion, &mut server.juego.jugadores) {
                                             Ok(_) => break, // Salir del loop si la instrucción se maneja correctamente
                                             Err(e) => {
                                                 println!("Error al manejar la instrucción: {}", e);
@@ -95,7 +94,7 @@ impl Juego {
     }
     
 
-    fn manejar_instruccion(instruccion: Instruccion, jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>, jugadores: Vec<Jugador>) -> Result<(), CustomError> {
+    fn manejar_instruccion(instruccion: Instruccion, jugador_actual: &mut Jugador, conexion: &mut MutexGuard<'_, TcpStream>, jugadores: &mut Vec<Jugador>) -> Result<(), CustomError> {
         match instruccion {
             Instruccion::Movimiento(barco_id, cordenadas) => {
                 Self::procesar_movimiento(barco_id, cordenadas, jugador_actual, conexion)?;
@@ -193,7 +192,7 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador con el ataque procesado
-    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_actual: &mut Jugador, mut jugadores: Vec<Jugador>) {
+    fn procesar_ataque(coordenadas_ataque: (i32, i32), jugador_actual: &mut Jugador, jugadores: &mut Vec<Jugador>) {
         let mut puntos_ganados = 0;
         for jugador in jugadores.iter_mut() {
             let mut jugador_atacado = jugador.clone();
