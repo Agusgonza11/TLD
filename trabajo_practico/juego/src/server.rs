@@ -5,9 +5,9 @@ use std::{
     sync::{Arc, Mutex},
     thread,
 };
-use libreria::custom_error::CustomError;
+use libreria::{constantes::PREMIO, custom_error::CustomError};
 
-use crate::{juego::Juego, mensaje::Mensaje};
+use crate::{juego::Juego, jugador::Jugador, mensaje::Mensaje};
 
 #[derive(Clone)]
 pub struct Server {
@@ -75,7 +75,7 @@ impl Server {
         }
     }
 
-    fn enviar_mensaje(stream: &mut TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
+    pub fn enviar_mensaje(stream: &mut TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         let result_flush = stream.flush();
@@ -138,6 +138,33 @@ impl Server {
     }
     
 
+    pub fn crear_evento_sorpresa(&mut self, jugadores: &mut Vec<Jugador>) {
+        for connection in self.conexiones_jugadores.values() {
+            let mut connection = connection.lock().unwrap();
+            let mensaje_serializado = serde_json::to_string(&Mensaje::EventoSorpresa).unwrap();
+            Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec()).unwrap();
+        }
+
+        let mut primero = None;
+
+        for (player_id, connection) in &self.conexiones_jugadores {
+            let mut connection = connection.lock().unwrap();
+            let mut buffer = [0; 512];
+            let bytes_read = connection.read(&mut buffer).unwrap();
+            let respuesta = String::from_utf8_lossy(&buffer[..bytes_read]).trim().to_string();
+    
+            if respuesta == "primero" && primero.is_none() {
+                primero = Some(player_id.clone());
+                jugadores[*player_id].puntos += PREMIO;
+                let mensaje_especial = serde_json::to_string(&Mensaje::EventoSorpresaResultado(true)).unwrap();
+                Server::enviar_mensaje(&mut connection, mensaje_especial.as_bytes().to_vec()).unwrap();
+            } else {
+                let mensaje_especial = serde_json::to_string(&Mensaje::EventoSorpresaResultado(false)).unwrap();
+                Server::enviar_mensaje(&mut connection, mensaje_especial.as_bytes().to_vec()).unwrap();
+            }
+        }
+
+    }
 
 
 }
