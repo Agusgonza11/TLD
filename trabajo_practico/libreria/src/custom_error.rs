@@ -13,15 +13,15 @@ pub enum CustomError {
     LongitudNombreInvalida,
     ErrorEnviarMensaje,
     ErrorSerializacion,
-    
-
+    ErrorMostrandoRanking,
+    ErrorRecibiendoMensaje,
 }
 
 impl fmt::Display for CustomError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             CustomError::Err => write!(f, ""),
-            CustomError::AccionInvalida=> write!(f, "Error: Acción invalida"),
+            CustomError::AccionInvalida => write!(f, "Error: Acción invalida"),
             CustomError::ErrorCreatingSocket => write!(f, "Error al crear el socket"),
             CustomError::ErrorAceptandoConexion => write!(f, "Error al aceptar la conexión"),
             CustomError::ErrorEnviandoInstruccion => write!(f, "Error al enviar la instrucción"),
@@ -31,6 +31,8 @@ impl fmt::Display for CustomError {
             CustomError::LongitudNombreInvalida => write!(f, "Error: Longitud de nombre invalida"),
             CustomError::ErrorEnviarMensaje => write!(f, "Error al enviar el mensaje"),
             CustomError::ErrorSerializacion => write!(f, "Error al serializar"),
+            CustomError::ErrorMostrandoRanking => write!(f, "Error al mostrar el ranking"),
+            CustomError::ErrorRecibiendoMensaje => write!(f, "Error al recibir el mensaje"),
         }
     }
 }

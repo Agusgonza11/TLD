@@ -11,18 +11,17 @@ pub struct Barco {
 
 impl Barco {
     /// Función que crea un nuevo barco
-    pub fn new(id: usize, tamaño: usize, posiciones: Vec<(i32, i32)>)-> Barco {
-        
+    pub fn new(id: usize, tamaño: usize, posiciones: Vec<(i32, i32)>) -> Barco {
         Barco {
             id,
             tamaño,
-            posiciones, 
+            posiciones,
             estado: EstadoBarco::Sano,
         }
     }
 
     pub fn obtener_datos(&self) -> (usize, Vec<(i32, i32)>) {
-        return (self.id.clone(), self.posiciones.clone())
+        (self.id, self.posiciones.clone())
     }
 
     pub fn actualizar_posicion(&mut self, nueva_posicion: Vec<(i32, i32)>) {
