@@ -40,6 +40,12 @@ impl Cliente {
                     match serde_json::from_str::<Mensaje>(&mensaje_serializado) {
                         Ok(mensaje) => {
                             match mensaje {
+                                Mensaje::Registro =>{
+                                    println!("Ingrese su nombre de usuario: ");
+                                    let mut respuesta = String::new();
+                                    io::stdin().read_line(&mut respuesta).expect("Error al leer la respuesta.");
+                                    self.enviar_respuesta(respuesta.trim())?;
+                                }
                                 Mensaje::PreguntaComienzo => {
                                     println!("¿Ya hay jugadores suficientes.Deseas comenzar el juego? (si/no)");
                                     let mut respuesta = String::new();

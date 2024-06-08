@@ -28,7 +28,7 @@ impl Juego {
         let mut mapa = Mapa::new();
         let mut jugadores = Vec::new();
         for _ in 0..numero_jugadores {
-            jugadores.push(Jugador::new(jugadores.len(), &mut mapa));
+            jugadores.push(Jugador::new(jugadores.len(),"".to_string(), &mut mapa));
         }
         let turno = 0;
         Juego {
@@ -147,9 +147,8 @@ impl Juego {
     /// # Returns
     /// 
     /// `Jugador` - Jugador agregado
-    pub fn agregar_jugador(&mut self) {
-        let ultimo_id = self.jugadores.len();
-        self.jugadores.push(Jugador::new(ultimo_id, &mut self.mapa));
+    pub fn agregar_jugador(&mut self,id_jugador: usize, nombre: String) {
+        self.jugadores.push(Jugador::new(id_jugador, nombre,&mut self.mapa));
     }
     /// Función que procesa un movimiento en el mapa
     /// 

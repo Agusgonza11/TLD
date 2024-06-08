@@ -9,6 +9,7 @@ use std::{io::Write, net::TcpStream, vec};
 #[derive(Clone)]
 pub struct Jugador {
     pub id: usize,
+    pub nombre_usuario: String,
     pub mapa: Mapa,
     pub barcos: Vec<Barco>,
     pub puntos: usize,
@@ -27,7 +28,7 @@ impl Jugador {
     /// # Returns
     /// 
     /// `Jugador` - Jugador creado
-    pub fn new(id: usize, mapa: &mut Mapa) -> Jugador {
+    pub fn new(id: usize,nombre:String, mapa: &mut Mapa) -> Jugador {
         let mut barcos = Vec::new();
         let mut id_actual = 0;
 
@@ -41,6 +42,7 @@ impl Jugador {
 
         Jugador {
             id,
+            nombre_usuario: nombre,
             barcos,
             puntos: 0,
             monedas: 500,
@@ -80,9 +82,7 @@ impl Jugador {
             }
         }
 
-        if self.mapa.actualizar_posicion_barco(&mut self.barcos[barco], coordenadas_destino.clone(), self.id) {
-            self.barcos[barco].actualizar_posicion(coordenadas_destino);
-        }
+        
     }
     
     pub fn obtener_barco(&self, barco_seleccionado: usize) -> Barco {

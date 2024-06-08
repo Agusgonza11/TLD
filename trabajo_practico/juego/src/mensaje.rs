@@ -20,4 +20,5 @@ pub enum Mensaje {
     RepetirAccion(String, Vec<(usize, Vec<(i32, i32)>)>),
     EventoSorpresa,
     EventoSorpresaResultado(bool),
+    Registro,
 }

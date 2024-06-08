@@ -14,6 +14,7 @@ pub struct Server {
     arc_server: Arc<TcpListener>,
     jugadores: Arc<Mutex<Vec<thread::JoinHandle<()>>>>,
     pub conexiones_jugadores: HashMap<usize, Arc<Mutex<TcpStream>>>,
+    nombres_jugadores: HashMap<usize, String>,
     pub juego: Juego,
     next_player_id: usize,
     jugadores_conectados: usize,
@@ -24,12 +25,14 @@ impl Server {
         let server = TcpListener::bind("127.0.0.1:8080").map_err(|_| CustomError::ErrorCreatingSocket)?;
         let jugadores = Arc::new(Mutex::new(Vec::new()));
         let conexiones_jugadores = HashMap::new();
+        let nombres_jugadores = HashMap::new();
         let juego = Juego::new(0);
         println!("Servidor iniciado.");
         Ok(Server {
             arc_server: Arc::new(server),
             jugadores,
             conexiones_jugadores,
+            nombres_jugadores,
             juego,
             next_player_id: 0,
             jugadores_conectados: 0,
@@ -39,22 +42,31 @@ impl Server {
     pub fn run(&mut self) -> Result<(), CustomError> {
         let mut self_clone = self.clone();
         for stream in self.arc_server.incoming() {
-            let stream = stream.map_err(|_| CustomError::ErrorAceptandoConexion)?;
+            let mut stream = stream.map_err(|_| CustomError::ErrorAceptandoConexion)?;
             self_clone.jugadores_conectados += 1;
             println!("Nuevo jugador conectado");
-            self_clone.handle_client(stream)?;
-            
+    
+            let mensaje_serializado = serde_json::to_string(&Mensaje::Registro).unwrap();
+            Self::enviar_mensaje(&mut stream, mensaje_serializado.as_bytes().to_vec()).unwrap();
+    
+            let mut buffer = [0; 2048];
+            let bytes_read = stream.read(&mut buffer).map_err(|_| CustomError::ErrorRecibiendoInstruccion)?;
+            let nombre_usuario = String::from_utf8_lossy(&buffer[..bytes_read]).trim().to_string();
+            println!("Jugador conectado con el nombre de usuario: {}", nombre_usuario);
+    
+            self_clone.handle_client(stream,nombre_usuario)?;
         }
         Ok(())
     }
 
-    fn handle_client(&mut self, stream: TcpStream) -> Result<(), CustomError> {
-        // Asigna un ID único al jugador
-        let player_id = self.next_player_id;
+    fn handle_client(&mut self, stream: TcpStream,nombre_usuario: String) -> Result<(), CustomError> {
+
+        let jugador_id = self.next_player_id;
         self.next_player_id += 1;
         let player_connection = Arc::new(Mutex::new(stream));
-        self.conexiones_jugadores.insert(player_id, player_connection);
-        self.juego.agregar_jugador();
+        self.conexiones_jugadores.insert(jugador_id, player_connection);
+        self.nombres_jugadores.insert(jugador_id, nombre_usuario.clone());
+        self.juego.agregar_jugador(jugador_id, nombre_usuario.clone());
         let self_clone = self.clone();
         let handle = thread::spawn(move || {
             self_clone.preguntar_comienzo_juego();
