@@ -198,7 +198,7 @@ impl Server {
 
             if respuesta == "primero" && primero.is_none() {
                 primero = Some(*player_id);
-                jugadores[*player_id].puntos += PREMIO;
+                jugadores[*player_id].monedas += PREMIO;
                 let mensaje_especial =
                     serde_json::to_string(&Mensaje::EventoSorpresaResultado(true)).unwrap();
                 Server::enviar_mensaje(&mut connection, mensaje_especial.as_bytes().to_vec())
