@@ -166,6 +166,8 @@ impl Server {
                 self.comenzar_juego();
             } else {
                 println!("Al menos un jugador no quiere comenzar el juego. Esperando nuevas conexiones...");
+                self.preguntar_comienzo_juego();
+
             }
         }
     }
