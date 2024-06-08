@@ -1,5 +1,5 @@
 /// Estructura de datos para los ataques
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Ataque {

@@ -2,13 +2,13 @@ use acciones::accion::Accion;
 use barcos::{barco::Barco, estado_barco::EstadoBarco};
 use libreria::custom_error::CustomError;
 
-use crate::{ mapa::Mapa, mensaje::Mensaje, server::Server}  ;
+use crate::{mapa::Mapa, mensaje::Mensaje, server::Server};
 use std::{io::Write, net::TcpStream, vec};
-
 
 #[derive(Clone)]
 pub struct Jugador {
     pub id: usize,
+    pub nombre_usuario: String,
     pub mapa: Mapa,
     pub barcos: Vec<Barco>,
     pub puntos: usize,
@@ -17,21 +17,21 @@ pub struct Jugador {
 
 impl Jugador {
     /// Función que crea un nuevo jugador
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `id` - Identificador del jugador
-    /// 
+    ///
     /// `mapa` - Mapa en el que se encuentra el jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Jugador` - Jugador creado
-    pub fn new(id: usize, mapa: &mut Mapa) -> Jugador {
+    pub fn new(id: usize, nombre: String, mapa: &mut Mapa) -> Jugador {
         let mut barcos = Vec::new();
         let mut id_actual = 0;
 
-        let tamaños_barcos: Vec<usize> = vec![5,4,3];
+        let tamaños_barcos: Vec<usize> = vec![1];
         for tamaño in tamaños_barcos {
             let vec_posiciones = mapa.obtener_posiciones_libres_contiguas(id.to_string(), tamaño);
             let id_barco = id_actual;
@@ -41,6 +41,7 @@ impl Jugador {
 
         Jugador {
             id,
+            nombre_usuario: nombre,
             barcos,
             puntos: 0,
             monedas: 500,
@@ -48,30 +49,38 @@ impl Jugador {
         }
     }
 
-    pub fn enviar_instrucciones(&self, server: &Server) {    
+    pub fn enviar_instrucciones(&self, server: &Server) {
         if let Some(conexion) = server.conexiones_jugadores.get(&self.id) {
-            let conexion = conexion.lock().map_err(|_| CustomError::ErrorAceptandoConexion).unwrap();
+            let conexion = conexion
+                .lock()
+                .map_err(|_| CustomError::ErrorAceptandoConexion)
+                .unwrap();
             let mensaje_serializado = serde_json::to_string(&Mensaje::Puntos(self.puntos)).unwrap();
             let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
         }
-    
     }
 
     pub fn manejar_turno(&mut self, server: &Server) {
-        let _ = self.mapa.enviar_tablero(self.id.to_string(), server, &self.barcos);
+        let _ = self
+            .mapa
+            .enviar_tablero(self.id.to_string(), server, &self.barcos);
     }
-    
+
     /// Función que permite al jugador moverse en el tablero
     ///
     /// # Args
-    /// 
+    ///
     /// `mapa` - Mapa en el que se moverá el jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Accion` - Acción de movimiento realizada por el jugador
 
-    pub fn actualizar_posicion_barco(&mut self, coordenadas_contiguas: Vec<(i32, i32)>, barco: usize) {
+    pub fn actualizar_posicion_barco(
+        &mut self,
+        coordenadas_contiguas: Vec<(i32, i32)>,
+        barco: usize,
+    ) {
         let mut coordenadas_destino = vec![];
         for (i, &coordenada) in coordenadas_contiguas.iter().enumerate() {
             coordenadas_destino.push(coordenada);
@@ -79,12 +88,8 @@ impl Jugador {
                 break;
             }
         }
-
-        if self.mapa.actualizar_posicion_barco(&mut self.barcos[barco], coordenadas_destino.clone(), self.id) {
-            self.barcos[barco].actualizar_posicion(coordenadas_destino);
-        }
     }
-    
+
     pub fn obtener_barco(&self, barco_seleccionado: usize) -> Barco {
         self.barcos[barco_seleccionado].clone()
     }
@@ -94,18 +99,18 @@ impl Jugador {
         Accion::Tienda(self.puntos)
     }
     /// Función que procesa un ataque realizado por un jugador
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `coordenadas_ataque` - Coordenadas del ataque realizado por el jugador
-    /// 
+    ///
     /// `mapa` - Mapa en el que se encuentra el jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `usize` - Puntos ganados por el jugador
-    
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> usize{
+
+    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> usize {
         let mut puntos = 0;
         let mut barcos_golpeados = false;
         let mut barcos_hundidos = Vec::new();
@@ -114,7 +119,7 @@ impl Jugador {
             println!("cordenadas: {:?}", coordenadas_ataque);
             if barco.posiciones.contains(&coordenadas_ataque) {
                 barcos_golpeados = true;
-                barco.posiciones.retain(|&pos| pos != coordenadas_ataque); 
+                barco.posiciones.retain(|&pos| pos != coordenadas_ataque);
 
                 if barco.posiciones.is_empty() {
                     barco.estado = EstadoBarco::Hundido;
@@ -122,7 +127,6 @@ impl Jugador {
                     println!("Ganaste 15 puntos");
                     puntos += 15;
                     barcos_hundidos.push(coordenadas_ataque);
-
                 } else {
                     if barco.estado == EstadoBarco::Sano {
                         barco.estado = EstadoBarco::Golpeado;
@@ -137,7 +141,8 @@ impl Jugador {
             }
         }
 
-        self.barcos.retain(|barco| barco.estado != EstadoBarco::Hundido);
+        self.barcos
+            .retain(|barco| barco.estado != EstadoBarco::Hundido);
 
         for coordenadas in barcos_hundidos {
             self.mapa.marcar_hundido(coordenadas);
@@ -155,5 +160,4 @@ impl Jugador {
         result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
-    
 }

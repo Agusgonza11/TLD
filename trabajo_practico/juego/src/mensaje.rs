@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 
@@ -7,6 +7,7 @@ pub enum Instruccion {
     Movimiento(usize, (i32, i32)),
     Tienda,
     Saltar,
+    Ranking,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -20,4 +21,6 @@ pub enum Mensaje {
     RepetirAccion(String, Vec<(usize, Vec<(i32, i32)>)>),
     EventoSorpresa,
     EventoSorpresaResultado(bool),
+    Registro,
+    Ranking(Vec<(String, usize)>),
 }

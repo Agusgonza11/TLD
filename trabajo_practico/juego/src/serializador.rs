@@ -5,11 +5,11 @@ impl Serializador {
         let nombre_longitud = nombre_bytes.len() as u32;
 
         let mut buffer = Vec::new();
-        
+
         buffer.extend(&nombre_longitud.to_be_bytes());
-        
+
         buffer.extend(nombre_bytes);
-        
+
         buffer
     }
 }

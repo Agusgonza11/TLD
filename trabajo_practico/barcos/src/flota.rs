@@ -3,7 +3,11 @@ use crate::barco::Barco;
 pub struct Flota {
     pub barcos: Vec<Barco>,
 }
-
+impl Default for Flota {
+    fn default() -> Self {
+    Self::new()
+    }
+}
 impl Flota {
     pub fn new() -> Flota {
         Flota { barcos: Vec::new() }

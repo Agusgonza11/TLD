@@ -1,13 +1,15 @@
+use libreria::{
+    constantes::{ATAQ, MOV},
+    custom_error::CustomError,
+};
+use serde_json;
 use std::{
-    io::{ self, Read, Write},
+    io::{self, Read, Write},
     net::TcpStream,
     sync::{Arc, Mutex},
 };
-use serde_json;
-use libreria::{constantes::{ATAQ, MOV}, custom_error::CustomError};
 
 use crate::mensaje::{Instruccion, Mensaje};
-
 
 pub struct Cliente {
     shared_stream: Arc<Mutex<TcpStream>>,
@@ -17,7 +19,7 @@ pub struct Cliente {
 }
 
 impl Cliente {
-    pub fn new(addr: String,_id: usize, nombre: String) -> Result<Self, CustomError> {
+    pub fn new(addr: String, _id: usize, nombre: String) -> Result<Self, CustomError> {
         let stream = TcpStream::connect(addr).map_err(|_| CustomError::ErrorCreatingSocket)?;
         let shared_stream: Arc<Mutex<TcpStream>> = Arc::new(Mutex::new(stream));
         Ok(Cliente {
@@ -25,7 +27,6 @@ impl Cliente {
             _id,
             nombre,
             _puntos: 0,
-            
         })
     }
 
@@ -40,21 +41,31 @@ impl Cliente {
                     match serde_json::from_str::<Mensaje>(&mensaje_serializado) {
                         Ok(mensaje) => {
                             match mensaje {
+                                Mensaje::Registro => {
+                                    println!("Ingrese su nombre de usuario: ");
+                                    let mut respuesta = String::new();
+                                    io::stdin()
+                                        .read_line(&mut respuesta)
+                                        .expect("Error al leer la respuesta.");
+                                    self.enviar_respuesta(respuesta.trim())?;
+                                }
                                 Mensaje::PreguntaComienzo => {
                                     println!("¿Ya hay jugadores suficientes.Deseas comenzar el juego? (si/no)");
                                     let mut respuesta = String::new();
-                                    io::stdin().read_line(&mut respuesta).expect("Error al leer la respuesta.");
+                                    io::stdin()
+                                        .read_line(&mut respuesta)
+                                        .expect("Error al leer la respuesta.");
                                     self.enviar_respuesta(respuesta.trim())?;
-                                },
+                                }
                                 Mensaje::RealiceAccion => {
                                     Self::imprimir_acciones();
-                                },
+                                }
                                 Mensaje::Esperando => {
                                     println!("Esperando mas jugadores para comenzar el juego...");
-                                },
+                                }
                                 Mensaje::Puntos(puntos) => {
                                     println!("Puntos: {}", puntos);
-                                },
+                                }
                                 Mensaje::Tablero(tablero, barcos) => {
                                     for row in tablero {
                                         for cell in row {
@@ -63,20 +74,23 @@ impl Cliente {
                                         println!();
                                     }
                                     let accion = Self::pedir_instrucciones(barcos);
-                                    let mensaje_serializado = serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
+                                    let mensaje_serializado =
+                                        serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
                                     self.enviar_respuesta(mensaje_serializado.as_str())?;
-
-                                },
+                                }
                                 Mensaje::RepetirAccion(mensaje, barcos) => {
                                     println!("{}", mensaje);
                                     let accion = Self::pedir_instrucciones(barcos);
-                                    let mensaje_serializado = serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
+                                    let mensaje_serializado =
+                                        serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
                                     self.enviar_respuesta(mensaje_serializado.as_str())?;
                                 }
                                 Mensaje::EventoSorpresa => {
                                     println!("Un cargamento con recursos aparecio de repente! se el primero en reclamarlo ingresando: primero");
                                     let mut respuesta = String::new();
-                                    io::stdin().read_line(&mut respuesta).expect("Error al leer la respuesta.");
+                                    io::stdin()
+                                        .read_line(&mut respuesta)
+                                        .expect("Error al leer la respuesta.");
                                     self.enviar_respuesta(respuesta.trim())?;
                                 }
                                 Mensaje::EventoSorpresaResultado(resultado) => {
@@ -86,7 +100,12 @@ impl Cliente {
                                         println!("Una lastima, alguien se te adelanto, perdiste el premio");
                                     }
                                 }
-                                _ => {}
+                                Mensaje::Ranking(ranking) => {
+                                    Self::mostrar_ranking(ranking);
+                                }
+                                _ => {
+                                    Err(CustomError::ErrorRecibiendoMensaje)?;
+                                }
                             }
                         }
                         Err(err) => {
@@ -102,20 +121,30 @@ impl Cliente {
         }
         Ok(())
     }
-    
 
     pub fn enviar_respuesta(&mut self, respuesta: &str) -> Result<(), CustomError> {
         let mut stream = self.shared_stream.lock().unwrap();
-        stream.write_all(respuesta.as_bytes()).map_err(|_| CustomError::ErrorEnviarMensaje)?;
-        //stream.flush().map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        stream
+            .write_all(respuesta.as_bytes())
+            .map_err(|_| CustomError::ErrorEnviarMensaje)?;
+        stream
+            .flush()
+            .map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
-
+    fn mostrar_ranking(ranking: Vec<(String, usize)>) {
+        println!("Ranking:");
+        for (index, (nombre, puntos)) in ranking.iter().enumerate() {
+            println!("{:<5} {:<15} {:<10}", index + 1, nombre, puntos);
+        }
+    }
 
     pub fn recibir_mensaje(&mut self) -> Result<String, CustomError> {
         let mut buffer = [0; 2048];
-        let mut stream = self.shared_stream.lock().unwrap(); 
-        let bytes_read = stream.read(&mut buffer).map_err(|_| CustomError::ErrorRecibiendoInstruccion)?;
+        let mut stream = self.shared_stream.lock().unwrap();
+        let bytes_read = stream
+            .read(&mut buffer)
+            .map_err(|_| CustomError::ErrorRecibiendoInstruccion)?;
         let message = String::from_utf8_lossy(&buffer[..bytes_read]).to_string();
         Ok(message)
     }
@@ -125,40 +154,32 @@ impl Cliente {
     pub fn obtener_nombre(&self) -> String {
         self.nombre.clone()
     }
-    fn _enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(),CustomError> {
-        let result_stream = stream.write_all(&msg);
-        result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
-        let result_flush = stream.flush();
-        result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
-        Ok(())
-    }
-
     fn imprimir_acciones() {
         println!("Realice una accion: ");
         println!("Puede moverse: (m)");
         println!("Puede atacar: (a)");
         println!("Puede abrir la tienda: (t)");
         println!("Puede saltar turno: (s)");
-        
+        println!("Puede ver el ranking: (r)")
     }
 
     fn pedir_instrucciones(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Instruccion {
         let mut accion = String::new();
         io::stdin()
-        .read_line(&mut accion)
-        .expect("Error al leer la entrada");
-        
+            .read_line(&mut accion)
+            .expect("Error al leer la entrada");
+
         match accion.trim() {
             "m" => Self::moverse(barcos),
             "a" => Self::atacar(barcos),
             "t" => Instruccion::Tienda,
             "s" => Instruccion::Saltar,
+            "r" => Instruccion::Ranking,
             _ => {
                 println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s).");
                 Instruccion::Saltar
-            },   
+            }
         }
-        
     }
 
     fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Instruccion {
@@ -186,7 +207,9 @@ impl Cliente {
         let barco_seleccionado: usize = match barco_seleccionado.trim().parse() {
             Ok(numero) => numero,
             Err(_) => {
-                println!("Numero de barco invalido. Por favor, ingrese un numero dentro del rango.");
+                println!(
+                    "Numero de barco invalido. Por favor, ingrese un numero dentro del rango."
+                );
                 return Self::obtener_barco(barcos, accion);
             }
         };
@@ -200,7 +223,6 @@ impl Cliente {
 
         (barco_seleccionado, cordenadas)
     }
-
 
     fn pedir_coordenadas() -> (i32, i32) {
         loop {
@@ -223,7 +245,4 @@ impl Cliente {
             println!("Formato de coordenadas incorrecto. Intentalo de nuevo.");
         }
     }
-
 }
-    
-
