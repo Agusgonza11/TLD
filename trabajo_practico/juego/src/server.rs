@@ -1,4 +1,4 @@
-use libreria::{constantes::PREMIO, custom_error::CustomError};
+use libreria::{constantes::{CORDENADAS_BOMBA, PREMIO}, custom_error::CustomError};
 use std::{
     collections::HashMap,
     io::{Read, Write},
@@ -209,6 +209,15 @@ impl Server {
                 Server::enviar_mensaje(&mut connection, mensaje_especial.as_bytes().to_vec())
                     .unwrap();
             }
+        }
+        match primero {
+            Some(p) => {
+                let posiciones = CORDENADAS_BOMBA;
+                for posicion in posiciones {
+                    Juego::procesar_ataque(*posicion, p, jugadores);
+                }
+            },
+            None => {},
         }
     }
 }

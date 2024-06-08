@@ -294,7 +294,7 @@ impl Juego {
     /// # Returns
     ///
     /// `Jugador` - Jugador con el ataque procesado
-    fn procesar_ataque(
+    pub fn procesar_ataque(
         coordenadas_ataque: (i32, i32),
         jugador_actual: usize,
         jugadores: &mut [Jugador],
