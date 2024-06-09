@@ -103,6 +103,10 @@ impl Cliente {
                                 Mensaje::Ranking(ranking) => {
                                     Self::mostrar_ranking(ranking);
                                 }
+                                Mensaje::FinPartida(nombre, puntos) => {
+                                    println!("Fin de la partida. El jugador {} ha ganado con {} puntos", nombre, puntos);
+                                    break;
+                                }
                                 _ => {
                                     Err(CustomError::ErrorRecibiendoMensaje)?;
                                 }

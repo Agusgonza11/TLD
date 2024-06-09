@@ -58,7 +58,7 @@ impl Juego {
     pub fn iniciar_juego(&mut self, server: &mut Server) -> Result<(), CustomError> {
         let mut rondas = 0;
 
-        while let Ok(finalizado) = self.finalizo() {
+        while let Ok(finalizado) = self.finalizo(server) {
             if finalizado {
                 break;
             }
@@ -126,7 +126,7 @@ impl Juego {
             rondas += 1;
         }
 
-        match self.finalizo() {
+        match self.finalizo(server) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
@@ -196,7 +196,7 @@ impl Juego {
     ///
     /// `bool` - Indica si el juego ha finalizado
 
-    fn finalizo(&self) -> Result<bool, CustomError> {
+    fn finalizo(&self,server: &Server) -> Result<bool, CustomError> {
         let jugadores_con_barcos = self
             .jugadores
             .iter()
@@ -207,6 +207,16 @@ impl Juego {
                 self.actualizar_ranking()
                     .map_err(|_| CustomError::ErrorMostrandoRanking)?;
                 println!("El jugador {} ha ganado", jugador.nombre_usuario);
+                let mensaje_serializado = serde_json::to_string(&Mensaje::FinPartida(
+                    jugador.nombre_usuario.clone(),
+                    jugador.puntos,
+                ));
+                if let Ok(mensaje) = mensaje_serializado {
+                    for (_, conexion) in &server.conexiones_jugadores {
+                        let mut conexion = conexion.lock().unwrap();
+                        Self::enviar_mensaje(&mut conexion, mensaje.as_bytes().to_vec())?;
+                    }
+                }
             } else {
                 println!("No hay ganadores.");
             }

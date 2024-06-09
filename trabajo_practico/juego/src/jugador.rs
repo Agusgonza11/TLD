@@ -115,8 +115,6 @@ impl Jugador {
         let mut barcos_golpeados = false;
         let mut barcos_hundidos = Vec::new();
         for barco in &mut self.barcos {
-            println!("Tengo barco {:?}", barco);
-            println!("cordenadas: {:?}", coordenadas_ataque);
             if barco.posiciones.contains(&coordenadas_ataque) {
                 barcos_golpeados = true;
                 barco.posiciones.retain(|&pos| pos != coordenadas_ataque);

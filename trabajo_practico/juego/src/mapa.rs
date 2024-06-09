@@ -165,10 +165,10 @@ impl Mapa {
     /// `()` - No retorna nada
     pub fn actualizar_posicion_barco(
         &mut self,
-        coordenadas_origen:&[(i32, i32)],
+        coordenadas_origen: &[(i32, i32)],
         coordenadas_destino: &[(i32, i32)],
         id: usize,
-    ){
+    ) {
         for &(x_origen, y_origen) in coordenadas_origen.iter() {
             if x_origen >= 0
                 && x_origen < self.tablero.ncols() as i32
