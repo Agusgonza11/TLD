@@ -23,4 +23,5 @@ pub enum Mensaje {
     EventoSorpresaResultado(bool),
     Registro,
     Ranking(Vec<(String, usize)>),
+    FinPartida(String,usize),
 }

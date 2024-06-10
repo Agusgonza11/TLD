@@ -5,7 +5,7 @@ pub struct Flota {
 }
 impl Default for Flota {
     fn default() -> Self {
-    Self::new()
+        Self::new()
     }
 }
 impl Flota {
