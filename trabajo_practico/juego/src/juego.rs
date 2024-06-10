@@ -178,8 +178,8 @@ impl Juego {
             Instruccion::Saltar => {
                 println!("Jugador salta su turno.");
             }
-            Instruccion::Tienda => {
-                println!("Jugador abre la tienda");
+            Instruccion::Compra(barco_elegido) => {
+                Self::abrir_tienda(jugadores, jugador_actual, barco_elegido);
             }
             Instruccion::Ranking => {
                 if Self::mostrar_ranking(conexion).is_err(){
@@ -238,6 +238,12 @@ impl Juego {
         self.jugadores
             .push(Jugador::new(id_jugador, nombre, &mut self.mapa));
     }
+
+    fn abrir_tienda(jugadores: &mut [Jugador], jugador_actual: usize, barco: usize) {
+        jugadores[jugador_actual].agregar_barco(barco);
+    }
+
+
     /// Función que procesa un movimiento en el mapa
     ///
     /// # Args
@@ -264,6 +270,7 @@ impl Juego {
                 jugadores[jugador_actual]
                     .mapa
                     .serializar_barcos(&jugadores[jugador_actual].barcos),
+                jugadores[jugador_actual].monedas.clone()
             ))
             .unwrap();
             Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec())?;
@@ -279,6 +286,7 @@ impl Juego {
                 jugadores[jugador_actual]
                     .mapa
                     .serializar_barcos(&jugadores[jugador_actual].barcos),
+                jugadores[jugador_actual].monedas.clone()
             ))
             .unwrap();
             Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec())?;

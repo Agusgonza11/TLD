@@ -66,21 +66,21 @@ impl Cliente {
                                 Mensaje::Puntos(puntos) => {
                                     println!("Puntos: {}", puntos);
                                 }
-                                Mensaje::Tablero(tablero, barcos) => {
+                                Mensaje::Tablero(tablero, barcos, monedas) => {
                                     for row in tablero {
                                         for cell in row {
                                             print!("{}", cell);
                                         }
                                         println!();
                                     }
-                                    let accion = Self::pedir_instrucciones(barcos);
+                                    let accion = Self::pedir_instrucciones(barcos, monedas);
                                     let mensaje_serializado =
                                         serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
                                     self.enviar_respuesta(mensaje_serializado.as_str())?;
                                 }
-                                Mensaje::RepetirAccion(mensaje, barcos) => {
+                                Mensaje::RepetirAccion(mensaje, barcos, monedas) => {
                                     println!("{}", mensaje);
-                                    let accion = Self::pedir_instrucciones(barcos);
+                                    let accion = Self::pedir_instrucciones(barcos, monedas);
                                     let mensaje_serializado =
                                         serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
                                     self.enviar_respuesta(mensaje_serializado.as_str())?;
@@ -143,6 +143,41 @@ impl Cliente {
         }
     }
 
+    fn abrir_tienda(monedas: usize) -> Instruccion {
+        println!("Opciones para comprar: ");
+        println!("(a) Acorazado de 3 casilleros: $300");
+        println!("(b) Buqe de 2 casilleros: $200");
+        println!("(c) Fragata de 1 casillero: $100");
+        println!("Usted cuenta con ${}", monedas);
+        let mut compra = String::new();
+        io::stdin()
+            .read_line(&mut compra)
+            .expect("Error al leer la respuesta.");
+        let mut exitosa = true;
+        let mut tipo_barco = 0;
+        match compra.trim() {
+            "a" => {
+                if monedas < 300 {exitosa = false}
+                tipo_barco = 0;
+            },
+            "b" => {
+                if monedas < 200 {exitosa = false}
+                tipo_barco = 1;
+            },
+            "c" => {
+                if monedas < 100 {exitosa = false}
+                tipo_barco = 2;
+            },
+            _ => {}
+        }
+        if !exitosa {
+            println!("No cuenta con el dinero suficiente para comprar ese barco");
+            Instruccion::Saltar
+        } else {
+            Instruccion::Compra(tipo_barco)
+        }
+    }
+
     pub fn recibir_mensaje(&mut self) -> Result<String, CustomError> {
         let mut buffer = [0; 2048];
         let mut stream = self.shared_stream.lock().unwrap();
@@ -167,7 +202,7 @@ impl Cliente {
         println!("Puede ver el ranking: (r)")
     }
 
-    fn pedir_instrucciones(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Instruccion {
+    fn pedir_instrucciones(barcos: Vec<(usize, Vec<(i32, i32)>)>, monedas: usize) -> Instruccion {
         let mut accion = String::new();
         io::stdin()
             .read_line(&mut accion)
@@ -176,7 +211,7 @@ impl Cliente {
         match accion.trim() {
             "m" => Self::moverse(barcos),
             "a" => Self::atacar(barcos),
-            "t" => Instruccion::Tienda,
+            "t" => Self::abrir_tienda(monedas),
             "s" => Instruccion::Saltar,
             "r" => Instruccion::Ranking,
             _ => {

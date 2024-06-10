@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub enum Instruccion {
     Ataque(usize, (i32, i32)),
     Movimiento(usize, (i32, i32)),
-    Tienda,
+    Compra(usize),
     Saltar,
     Ranking,
 }
@@ -16,9 +16,10 @@ pub enum Mensaje {
     RealiceAccion,
     Esperando,
     Puntos(usize),
-    Tablero(Vec<Vec<char>>, Vec<(usize, Vec<(i32, i32)>)>),
+    Tablero(Vec<Vec<char>>, Vec<(usize, Vec<(i32, i32)>)>, usize),
     Accion(Instruccion),
-    RepetirAccion(String, Vec<(usize, Vec<(i32, i32)>)>),
+    AbrirTienda(usize),
+    RepetirAccion(String, Vec<(usize, Vec<(i32, i32)>)>, usize),
     EventoSorpresa,
     EventoSorpresaResultado(bool),
     Registro,

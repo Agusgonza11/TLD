@@ -107,6 +107,7 @@ impl Mapa {
         id: String,
         server: &Server,
         barcos: &[Barco],
+        monedas: usize
     ) -> Result<(), CustomError> {
         let jugador: char = id
             .chars()
@@ -130,11 +131,12 @@ impl Mapa {
             .conexiones_jugadores
             .get(&id.parse().unwrap_or_default())
         {
+
             let conexion = conexion
                 .lock()
                 .map_err(|_| CustomError::ErrorAceptandoConexion)?;
             let mensaje_serializado =
-                serde_json::to_string(&Mensaje::Tablero(tablero_vec, barcos_serializados)).unwrap();
+                serde_json::to_string(&Mensaje::Tablero(tablero_vec, barcos_serializados, monedas)).unwrap();
             Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
         }
 

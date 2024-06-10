@@ -63,7 +63,11 @@ impl Jugador {
     pub fn manejar_turno(&mut self, server: &Server) {
         let _ = self
             .mapa
-            .enviar_tablero(self.id.to_string(), server, &self.barcos);
+            .enviar_tablero(self.id.to_string(), server, &self.barcos, self.monedas.clone());
+    }
+
+    pub fn agregar_barco(&mut self, tamanio_barco: usize) {
+        
     }
 
     /// Función que permite al jugador moverse en el tablero
