@@ -163,46 +163,27 @@ impl Mapa {
     /// # Returns
     ///
     /// `()` - No retorna nada
-    pub fn actualizar_posicion_barco(
-        &mut self,
-        coordenadas_origen: &[(i32, i32)],
-        coordenadas_destino: &[(i32, i32)],
-        id: usize,
-    ) {
+    pub fn actualizar_posicion_barco(&mut self, barco: &mut Barco, coordenadas_destino: Vec<(i32, i32)>, id: usize) -> bool {
+        let mut modifico = false;
+        let coordenadas_origen = barco.posiciones.clone();
         for &(x_origen, y_origen) in coordenadas_origen.iter() {
-            if x_origen >= 0
-                && x_origen < self.tablero.ncols() as i32
-                && y_origen >= 0
-                && y_origen < self.tablero.nrows() as i32
-            {
+            if x_origen >= 0 && x_origen < self.tablero.ncols() as i32 && y_origen >= 0 && y_origen < self.tablero.nrows() as i32 {
                 self.tablero[[y_origen as usize, x_origen as usize]] = '.';
             } else {
-                println!(
-                    "Coordenada origen fuera de limites: ({}, {})",
-                    x_origen, y_origen
-                );
+                println!("Coordenada origen fuera de limites: ({}, {})", x_origen, y_origen); 
             }
         }
-
+    
         for &(x_destino, y_destino) in coordenadas_destino.iter() {
-            println!(
-                "Actualizando posición destino: ({}, {})",
-                x_destino, y_destino
-            ); // Depuración
-            if x_destino >= 0
-                && x_destino < self.tablero.ncols() as i32
-                && y_destino >= 0
-                && y_destino < self.tablero.nrows() as i32
-            {
-                self.tablero[[y_destino as usize, x_destino as usize]] =
-                    id.to_string().chars().next().unwrap();
+            println!("Actualizando posición destino: ({}, {})", x_destino, y_destino); // Depuración
+            if x_destino >= 0 && x_destino < self.tablero.ncols() as i32 && y_destino >= 0 && y_destino < self.tablero.nrows() as i32 {
+                modifico = true;
+                self.tablero[[y_destino as usize, x_destino as usize]] = id.to_string().chars().next().unwrap(); 
             } else {
-                println!(
-                    "Coordenada destino fuera de limites: ({}, {})",
-                    x_destino, y_destino
-                );
+                println!("Coordenada destino fuera de limites: ({}, {})", x_destino, y_destino); 
             }
         }
+        modifico
     }
 
     /// Función que marca una posición como hundida en el tablero

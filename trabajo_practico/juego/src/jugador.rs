@@ -88,6 +88,10 @@ impl Jugador {
                 break;
             }
         }
+
+        if self.mapa.actualizar_posicion_barco(&mut self.barcos[barco], coordenadas_destino.clone(), self.id) {
+            self.barcos[barco].actualizar_posicion(coordenadas_destino);
+        }
     }
 
     pub fn obtener_barco(&self, barco_seleccionado: usize) -> Barco {
