@@ -10,7 +10,7 @@ use std::{
 };
 
 use crate::mensaje::{Instruccion, Mensaje};
-
+/// Struct que representa un cliente
 pub struct Cliente {
     shared_stream: Arc<Mutex<TcpStream>>,
     _id: usize,
@@ -19,6 +19,19 @@ pub struct Cliente {
 }
 
 impl Cliente {
+    /// Función que crea un nuevo cliente
+    /// 
+    /// # Args
+    /// 
+    /// `addr` - Dirección del servidor
+    /// 
+    /// `_id` - Identificador del cliente
+    /// 
+    /// `nombre` - Nombre del cliente
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<Self, CustomError>` - Resultado de la creación del cliente
     pub fn new(addr: String, _id: usize, nombre: String) -> Result<Self, CustomError> {
         let stream = TcpStream::connect(addr).map_err(|_| CustomError::ErrorCreatingSocket)?;
         let shared_stream: Arc<Mutex<TcpStream>> = Arc::new(Mutex::new(stream));
@@ -29,7 +42,15 @@ impl Cliente {
             _puntos: 0,
         })
     }
-
+    /// Función que ejecuta el cliente
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución del cliente
+    /// 
+    /// # Errors
+    /// 
+    /// Retorna un error si no se puede recibir el mensaje del servidor
     pub fn run(&mut self) -> Result<(), CustomError> {
         loop {
             match self.recibir_mensaje() {
@@ -101,7 +122,7 @@ impl Cliente {
                                     }
                                 }
                                 Mensaje::Ranking(ranking) => {
-                                    Self::mostrar_ranking(ranking);
+                                    Self::mostrar_ranking(ranking)?;
                                 }
                                 Mensaje::FinPartida(nombre, puntos) => {
                                     println!("Fin de la partida. El jugador {} ha ganado con {} puntos", nombre, puntos);
@@ -125,7 +146,19 @@ impl Cliente {
         }
         Ok(())
     }
-
+    /// Función que envía una respuesta al servidor
+    /// 
+    /// # Args
+    /// 
+    /// `respuesta` - Respuesta a enviar al servidor
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado del envío de la respuesta
+    /// 
+    /// # Errors
+    /// 
+    /// Retorna un error si no se puede enviar la respuesta
     pub fn enviar_respuesta(&mut self, respuesta: &str) -> Result<(), CustomError> {
         let mut stream = self.shared_stream.lock().unwrap();
         stream
@@ -136,13 +169,35 @@ impl Cliente {
             .map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
-    fn mostrar_ranking(ranking: Vec<(String, usize)>) {
+    /// Función que muestra el ranking de los jugadores
+    /// 
+    /// # Args
+    /// 
+    /// `ranking` - Ranking de los jugadores
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
+    fn mostrar_ranking(ranking: Vec<(String, usize)>) -> Result<(), CustomError>{
+        if ranking.is_empty() {
+            return Err(CustomError::ErrorRankingVacio);
+        }
         println!("Ranking:");
         for (index, (nombre, puntos)) in ranking.iter().enumerate() {
             println!("{:<5} {:<15} {:<10}", index + 1, nombre, puntos);
         }
+        Ok(())
     }
 
+    /// Funcion que permite al jugador abrir la tienda y comprar barcos
+    /// # Args
+    /// `coordenadas_ataque` - Coordenadas del ataque realizado por el jugador
+    /// 
+    /// `mapa` - Mapa en el que se encuentra el jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `usize` - Puntos ganados por el jugador
     fn abrir_tienda(monedas: usize) -> Instruccion {
         println!("Opciones para comprar: ");
         println!("(a) Acorazado de 3 casilleros: $300");
@@ -158,15 +213,15 @@ impl Cliente {
         match compra.trim() {
             "a" => {
                 if monedas < 300 {exitosa = false}
-                tipo_barco = 0;
+                tipo_barco = 3;
             },
             "b" => {
                 if monedas < 200 {exitosa = false}
-                tipo_barco = 1;
+                tipo_barco = 2;
             },
             "c" => {
                 if monedas < 100 {exitosa = false}
-                tipo_barco = 2;
+                tipo_barco = 1;
             },
             _ => {}
         }
@@ -209,30 +264,30 @@ impl Cliente {
             .expect("Error al leer la entrada");
 
         match accion.trim() {
-            "m" => Self::moverse(barcos),
-            "a" => Self::atacar(barcos),
+            "m" => Self::moverse(barcos).unwrap(),
+            "a" => Self::atacar(barcos).unwrap(),
             "t" => Self::abrir_tienda(monedas),
             "s" => Instruccion::Saltar,
             "r" => Instruccion::Ranking,
             _ => {
                 println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s).");
-                Instruccion::Saltar
+                Self::pedir_instrucciones(barcos, monedas)
             }
         }
     }
 
-    fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Instruccion {
-        let (id, posicion) = Self::obtener_barco(barcos, MOV);
-        Instruccion::Movimiento(id, posicion)
+    fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<Instruccion,CustomError> {
+        let (id, posicion) = Self::obtener_barco(barcos, MOV).unwrap();
+        Ok(Instruccion::Movimiento(id, posicion))
     }
 
-    fn atacar(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Instruccion {
-        let (id, posicion) = Self::obtener_barco(barcos, ATAQ);
-
-        Instruccion::Ataque(id, posicion)
+    fn atacar(barcos: Vec<(usize, Vec<(i32, i32)>)>) ->Result<Instruccion, CustomError>{
+        let (id, posicion) = Self::obtener_barco(barcos, ATAQ).unwrap();
+        
+        Ok(Instruccion::Ataque(id, posicion))
     }
 
-    fn obtener_barco(barcos: Vec<(usize, Vec<(i32, i32)>)>, accion: &str) -> (usize, (i32, i32)) {
+    fn obtener_barco(barcos: Vec<(usize, Vec<(i32, i32)>)>, accion: &str) -> Result<(usize, (i32, i32)),CustomError>{
         println!("Elige un barco para {}:", accion);
         for (i, (id, posicion)) in barcos.iter().enumerate() {
             println!("{}: ID: {}, Posicion: {:?}", i, id, posicion);
@@ -258,12 +313,19 @@ impl Cliente {
             return Self::obtener_barco(barcos, accion);
         }
 
-        let cordenadas = Self::pedir_coordenadas();
-
-        (barco_seleccionado, cordenadas)
+        let cordenadas = Self::pedir_coordenadas().unwrap();
+        Ok((barco_seleccionado, cordenadas))
     }
-
-    fn pedir_coordenadas() -> (i32, i32) {
+    /// Función que pide las coordenadas al usuario
+    /// 
+    /// # Returns
+    /// 
+    /// `(i32, i32)` - Coordenadas ingresadas por el usuario
+    /// 
+    /// # Errors
+    /// 
+    /// Retorna un error si las coordenadas ingresadas no son válidas
+    fn pedir_coordenadas() -> Result<(i32, i32), CustomError>{
         loop {
             println!("Ingresa las coordenadas en formato 'x,y': ");
 
@@ -276,12 +338,12 @@ impl Cliente {
             if let (Some(x_str), Some(y_str)) = (iter.next(), iter.next()) {
                 if let Ok(x) = x_str.trim().parse::<i32>() {
                     if let Ok(y) = y_str.trim().parse::<i32>() {
-                        return (x, y);
+                        return Ok((x, y));
                     }
                 }
             }
 
-            println!("Formato de coordenadas incorrecto. Intentalo de nuevo.");
+            return Err(CustomError::ErrorCoordenadasIncorrectas);
         }
     }
 }

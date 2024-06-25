@@ -48,7 +48,15 @@ impl Jugador {
             mapa: mapa.clone(),
         }
     }
-
+    /// Función que envía las instrucciones al jugador
+    /// 
+    /// # Args
+    /// 
+    /// `server` - Servidor en el que se encuentra el jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     pub fn enviar_instrucciones(&self, server: &Server) {
         if let Some(conexion) = server.conexiones_jugadores.get(&self.id) {
             let conexion = conexion
@@ -59,15 +67,35 @@ impl Jugador {
             let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
         }
     }
-
+    /// Función que maneja el turno del jugador
+    /// 
+    /// # Args
+    /// 
+    /// `server` - Servidor en el que se encuentra el jugador
+    /// 
+    /// # Returns
+    /// 
+    /// 
     pub fn manejar_turno(&mut self, server: &Server) {
         let _ = self
             .mapa
             .enviar_tablero(self.id.to_string(), server, &self.barcos, self.monedas.clone());
     }
-
+    /// Función que permite al jugador agregar un barco al tablero
+    /// 
+    /// # Args
+    /// 
+    /// `tamanio_barco` - Tamaño del barco a agregar
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     pub fn agregar_barco(&mut self, tamanio_barco: usize) {
-        
+        let vec_posiciones = self
+            .mapa
+            .obtener_posiciones_libres_contiguas(self.id.to_string(), tamanio_barco);
+        let id_barco = self.barcos.len() ;
+        self.barcos.push(Barco::new(id_barco, tamanio_barco, vec_posiciones));
     }
 
     /// Función que permite al jugador moverse en el tablero
@@ -120,6 +148,7 @@ impl Jugador {
 
     pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> usize {
         let mut puntos = 0;
+        let mut monedas = 0;
         let mut barcos_golpeados = false;
         let mut barcos_hundidos = Vec::new();
         for barco in &mut self.barcos {
@@ -155,10 +184,26 @@ impl Jugador {
         }
 
         if !barcos_golpeados {
+            //si no le pego a ningun braco se envia el mensaje al jugador 
+
+            
             println!("No le pegaste a nada, burro irrecuperable.");
         }
         puntos
     }
+    /// Función que envía un mensaje al servidor
+    /// 
+    /// # Args
+    /// 
+    /// `stream` - Stream por el cual se enviará el mensaje
+    /// 
+    /// `msg` - Mensaje a enviar
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la operación
+    /// 
+    /// # Errors
     fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;

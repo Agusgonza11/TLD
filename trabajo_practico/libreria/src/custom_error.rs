@@ -15,6 +15,8 @@ pub enum CustomError {
     ErrorSerializacion,
     ErrorMostrandoRanking,
     ErrorRecibiendoMensaje,
+    ErrorRankingVacio,
+    ErrorCoordenadasIncorrectas,
 }
 
 impl fmt::Display for CustomError {
@@ -33,6 +35,8 @@ impl fmt::Display for CustomError {
             CustomError::ErrorSerializacion => write!(f, "Error al serializar"),
             CustomError::ErrorMostrandoRanking => write!(f, "Error al mostrar el ranking"),
             CustomError::ErrorRecibiendoMensaje => write!(f, "Error al recibir el mensaje"),
+            CustomError::ErrorRankingVacio => write!(f, "El ranking esta vacio"),
+            CustomError::ErrorCoordenadasIncorrectas => write!(f, "Error: Coordenadas incorrectas"),
         }
     }
 }
