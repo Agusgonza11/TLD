@@ -17,6 +17,7 @@ pub enum CustomError {
     ErrorRecibiendoMensaje,
     ErrorRankingVacio,
     ErrorCoordenadasIncorrectas,
+    ErrorBarcoInexistente,
 }
 
 impl fmt::Display for CustomError {
@@ -37,6 +38,7 @@ impl fmt::Display for CustomError {
             CustomError::ErrorRecibiendoMensaje => write!(f, "Error al recibir el mensaje"),
             CustomError::ErrorRankingVacio => write!(f, "El ranking esta vacio"),
             CustomError::ErrorCoordenadasIncorrectas => write!(f, "Error: Coordenadas incorrectas"),
+            CustomError::ErrorBarcoInexistente => write!(f, "Error: Barco inexistente"),
         }
     }
 }

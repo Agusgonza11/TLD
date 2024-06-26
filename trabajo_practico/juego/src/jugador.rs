@@ -125,9 +125,12 @@ impl Jugador {
             self.barcos[barco].actualizar_posicion(coordenadas_destino);
         }
     }
-
-    pub fn obtener_barco(&self, barco_seleccionado: usize) -> Barco {
-        self.barcos[barco_seleccionado].clone()
+    ///
+    pub fn obtener_barco(&self, barco_seleccionado: usize) -> Result<Barco,CustomError> {
+        if barco_seleccionado >= self.barcos.len() {
+            return Err(CustomError::ErrorBarcoInexistente);
+        }
+        Ok(self.barcos[barco_seleccionado].clone())
     }
 
     fn _abrir_tienda(&self) -> Accion {

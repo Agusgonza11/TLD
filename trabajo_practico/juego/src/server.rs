@@ -106,7 +106,17 @@ impl Server {
             Err(CustomError::ErrorJugadorInexistente)
         }
     }
-
+    /// Función que envía un mensaje a un jugador
+    /// 
+    /// # Args
+    /// 
+    /// `stream` - Stream del jugador
+    /// 
+    /// `msg` - Mensaje a enviar
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Ok si se envió el mensaje correctamente, CustomError en caso contrario
     pub fn enviar_mensaje(stream: &mut TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
@@ -114,7 +124,17 @@ impl Server {
         result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
-
+    /// Función que recibe un mensaje de un jugador
+    /// 
+    /// # Args
+    /// 
+    /// `id` - Id del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<String, CustomError>` - Mensaje recibido
+    /// 
+    /// `CustomError` - Error al recibir el mensaje
     pub fn recibir_mensaje(&mut self, id: usize) -> Result<String, CustomError> {
         let mut buffer = [0; 2048];
         let stream = self.conexiones_jugadores.get(&id).unwrap();
@@ -126,8 +146,16 @@ impl Server {
         let message = String::from_utf8_lossy(&buffer[..bytes_read]).to_string();
         Ok(message)
     }
-
-    fn esperar_jugadores(&self) {
+    /// Función que envía un mensaje a todos los jugadores
+    /// 
+    /// # Args
+    /// 
+    /// `msg` - Mensaje a enviar
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Ok si se envió el mensaje correctamente, CustomError en caso contrario
+    fn esperar_jugadores(&self) -> Result<(), CustomError>{
         for connection in self.conexiones_jugadores.values() {
             let mut connection = connection.lock().unwrap();
             let mensaje_serializado = serde_json::to_string(&Mensaje::Esperando).unwrap();
@@ -136,12 +164,13 @@ impl Server {
         }
 
         std::thread::sleep(std::time::Duration::from_secs(5));
+        Ok(())
     }
 
     pub fn preguntar_comienzo_juego(&self) {
         if self.conexiones_jugadores.len() < 2 {
             println!("Esperando más jugadores para comenzar el juego...");
-            self.esperar_jugadores();
+            let _ = self.esperar_jugadores();
         } else {
             let mut respuestas: HashMap<usize, String> = HashMap::new();
 
@@ -216,7 +245,7 @@ impl Server {
             Some(p) => {
                 let posiciones = CORDENADAS_BOMBA;
                 for posicion in posiciones {
-                    Juego::procesar_ataque(*posicion, p, jugadores);
+                    Juego::procesar_ataque(*posicion, p, jugadores).unwrap();
                 }
             },
             None => {},

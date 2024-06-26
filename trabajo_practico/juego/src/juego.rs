@@ -131,7 +131,19 @@ impl Juego {
             Err(e) => Err(e),
         }
     }
-
+    /// Función que muestra el ranking de los jugadores
+    /// 
+    /// # Args
+    /// 
+    /// `conexion` - Conexión del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución
+    /// 
+    /// # Errors
+    /// 
+    /// `CustomError` - Error personalizado
     fn mostrar_ranking(conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
         let file_path = "../archivos/ranking.json";
         let file = File::open(file_path).map_err(|_| CustomError::ErrorMostrandoRanking)?;
@@ -154,7 +166,25 @@ impl Juego {
 
         Self::enviar_mensaje(conexion, mensaje_serializado.into_bytes())
     }
-
+    /// Función que maneja una instrucción
+    /// 
+    /// # Args
+    /// 
+    /// `instruccion` - Instrucción a manejar
+    /// 
+    /// `jugador_actual` - Jugador que realiza la instrucción
+    /// 
+    /// `conexion` - Conexión del jugador
+    /// 
+    /// `jugadores` - Vector de jugadores
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución
+    /// 
+    /// # Errors
+    /// 
+    /// `CustomError` - Error personalizado
     fn manejar_instruccion(
         instruccion: Instruccion,
         jugador_actual: usize,
@@ -173,7 +203,7 @@ impl Juego {
                 //Self::procesar_movimiento(movimiento, &mut self.jugadores);
             }
             Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
-                Self::procesar_ataque(coordenadas_ataque, jugador_actual, jugadores);
+                Self::procesar_ataque(coordenadas_ataque, jugador_actual, jugadores)?
             }
             Instruccion::Saltar => {
                 println!("Jugador salta su turno.");
@@ -262,7 +292,7 @@ impl Juego {
         jugadores:&mut [Jugador],
         conexion: &mut MutexGuard<'_, TcpStream>,
     ) -> Result<(), CustomError> {
-        let barco = jugadores[jugador_actual].obtener_barco(barco_id);
+        let barco = jugadores[jugador_actual].obtener_barco(barco_id)?;
         if barco.estado == EstadoBarco::Golpeado || barco.estado == EstadoBarco::Hundido {
             let mensaje = "El barco seleccionado esta golpeado, no se puede mover, elija otra accion u otro barco.";
             let mensaje_serializado = serde_json::to_string(&Mensaje::RepetirAccion(
@@ -316,7 +346,8 @@ impl Juego {
         coordenadas_ataque: (i32, i32),
         jugador_actual: usize,
         jugadores: &mut [Jugador],
-    ) {
+    ) -> Result<(),CustomError>{
+
         let mut puntos_ganados = 0;
         let mut monedas_ganadas = 0;
         for jugador in jugadores.iter_mut() {
@@ -331,8 +362,21 @@ impl Juego {
         }
         jugadores[jugador_actual].puntos += puntos_ganados;
         jugadores[jugador_actual].monedas += monedas_ganadas;
+        Ok(())
     }
-
+    /// Función que envía un mensaje a un jugador
+    /// 
+    /// # Args
+    /// 
+    /// `stream` - Stream del jugador
+    /// 
+    /// `msg` - Mensaje a enviar
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución
+    /// 
+    /// # Errors
     fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
@@ -340,6 +384,16 @@ impl Juego {
         result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
+
+    /// Función que actualiza el ranking de los jugadores
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución
+    /// 
+    /// # Errors
+    /// 
+    /// `CustomError` - Error personalizado
     pub fn actualizar_ranking(&self) -> Result<(), CustomError> {
         let dir_archivo: &str = "../archivos";
         let nombre_archivo = format!("{}/ranking.json", dir_archivo);
