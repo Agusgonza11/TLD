@@ -114,6 +114,9 @@ impl Cliente {
                                         .expect("Error al leer la respuesta.");
                                     self.enviar_respuesta(respuesta.trim())?;
                                 }
+                                Mensaje::MensajeInfoAaque(puntos,monedas ) =>{
+                                    println!("Has golpeado a un barco enemigo, has ganado {} puntos y {} monedas", puntos, monedas);
+                                }
                                 Mensaje::EventoSorpresaResultado(resultado) => {
                                     if resultado {
                                         println!("Felicidades, fuiste el primero en reclamar el premio, ahora es tuyo");

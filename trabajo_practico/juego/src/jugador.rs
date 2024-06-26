@@ -146,7 +146,7 @@ impl Jugador {
     ///
     /// `usize` - Puntos ganados por el jugador
 
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> usize {
+    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> (usize,usize) {
         let mut puntos = 0;
         let mut monedas = 0;
         let mut barcos_golpeados = false;
@@ -161,6 +161,7 @@ impl Jugador {
                     println!("El barco ha sido hundido");
                     println!("Ganaste 15 puntos");
                     puntos += 15;
+                    monedas += 100;
                     barcos_hundidos.push(coordenadas_ataque);
                 } else {
                     if barco.estado == EstadoBarco::Sano {
@@ -168,9 +169,11 @@ impl Jugador {
                         println!("Le pegaste a un barco");
                         println!("Ganaste 5 puntos");
                         puntos += 5;
+                        monedas += 50;
                     } else if barco.estado == EstadoBarco::Golpeado {
                         println!("Ganaste 5 puntos");
                         puntos += 5;
+                        monedas += 50;
                     }
                 }
             }
@@ -189,7 +192,7 @@ impl Jugador {
             
             println!("No le pegaste a nada, burro irrecuperable.");
         }
-        puntos
+        (puntos,monedas)
     }
     /// Función que envía un mensaje al servidor
     /// 

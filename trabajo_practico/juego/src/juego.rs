@@ -318,16 +318,19 @@ impl Juego {
         jugadores: &mut [Jugador],
     ) {
         let mut puntos_ganados = 0;
+        let mut monedas_ganadas = 0;
         for jugador in jugadores.iter_mut() {
             if jugador.id != jugador_actual {
-                let puntos = jugador.procesar_ataque(coordenadas_ataque);
+                let (puntos,monedas) = jugador.procesar_ataque(coordenadas_ataque);
                 puntos_ganados += puntos;
+                monedas_ganadas += monedas;
                 if puntos > 0 {
                     jugador.mapa.marcar_hundido(coordenadas_ataque);
                 }
             }
         }
         jugadores[jugador_actual].puntos += puntos_ganados;
+        jugadores[jugador_actual].monedas += monedas_ganadas;
     }
 
     fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
