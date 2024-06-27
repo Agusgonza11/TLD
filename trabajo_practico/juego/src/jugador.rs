@@ -146,22 +146,21 @@ impl Jugador {
     ///
     /// `usize` - Puntos ganados por el jugador
 
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32)) -> (usize,usize) {
+    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32), server: &Server) -> (usize,usize) {
         let mut puntos = 0;
         let mut monedas = 0;
-        let mut barcos_golpeados = false;
         let mut barcos_hundidos = Vec::new();
         for barco in &mut self.barcos {
             if barco.posiciones.contains(&coordenadas_ataque) {
-                barcos_golpeados = true;
                 barco.posiciones.retain(|&pos| pos != coordenadas_ataque);
 
                 if barco.posiciones.is_empty() {
                     barco.estado = EstadoBarco::Hundido;
-                    println!("El barco ha sido hundido");
-                    println!("Ganaste 15 puntos");
                     puntos += 15;
                     monedas += 100;
+                    let conexion = server.conexiones_jugadores.get(&self.id).unwrap().lock().unwrap();
+                    let mensaje_serializado = serde_json::to_string(&Mensaje::BarcoHundido).unwrap();
+                    let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
                     barcos_hundidos.push(coordenadas_ataque);
                 } else {
                     if barco.estado == EstadoBarco::Sano {
@@ -186,12 +185,6 @@ impl Jugador {
             self.mapa.marcar_hundido(coordenadas);
         }
 
-        if !barcos_golpeados {
-            //si no le pego a ningun braco se envia el mensaje al jugador 
-
-            
-            println!("No le pegaste a nada, burro irrecuperable.");
-        }
         (puntos,monedas)
     }
     /// Función que envía un mensaje al servidor

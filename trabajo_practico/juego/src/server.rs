@@ -216,7 +216,9 @@ impl Server {
             Some(p) => {
                 let posiciones = CORDENADAS_BOMBA;
                 for posicion in posiciones {
-                    Juego::procesar_ataque(*posicion, p, jugadores);
+                    let self_clone = self.clone();
+                    let mut conexion = self_clone.conexiones_jugadores.get(&p).unwrap().lock().unwrap();
+                    Juego::procesar_ataque(*posicion, p, jugadores, &self_clone,&mut conexion);
                 }
             },
             None => {},

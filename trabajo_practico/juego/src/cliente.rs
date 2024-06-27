@@ -115,7 +115,14 @@ impl Cliente {
                                     self.enviar_respuesta(respuesta.trim())?;
                                 }
                                 Mensaje::MensajeInfoAaque(puntos,monedas ) =>{
+                                    if puntos == 0 {
+                                        println!("Has fallado el ataque, no has ganado puntos ni monedas");
+                                    } else {
                                     println!("Has golpeado a un barco enemigo, has ganado {} puntos y {} monedas", puntos, monedas);
+                                }
+                                }
+                                Mensaje::BarcoHundido => {
+                                    println!("Han golpeado tu barco ");
                                 }
                                 Mensaje::EventoSorpresaResultado(resultado) => {
                                     if resultado {
@@ -236,6 +243,15 @@ impl Cliente {
         }
     }
 
+    /// Función que recibe un mensaje del servidor
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<String, CustomError>` - Resultado del mensaje recibido
+    /// 
+    /// # Errors
+    /// 
+    /// Retorna un error si no se puede recibir el mensaje
     pub fn recibir_mensaje(&mut self) -> Result<String, CustomError> {
         let mut buffer = [0; 2048];
         let mut stream = self.shared_stream.lock().unwrap();
@@ -245,12 +261,32 @@ impl Cliente {
         let message = String::from_utf8_lossy(&buffer[..bytes_read]).to_string();
         Ok(message)
     }
+
+    /// Función que cambia el nombre del jugador
+    /// 
+    /// # Args
+    /// 
+    /// `nombre` - Nuevo nombre del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     pub fn cambiar_nombre(&mut self, nombre: String) {
         self.nombre = nombre;
     }
+    /// Función que obtiene el nombre del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `String` - Nombre del jugador
     pub fn obtener_nombre(&self) -> String {
         self.nombre.clone()
     }
+    /// Función que imprime las acciones que puede realizar el jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     fn imprimir_acciones() {
         println!("Realice una accion: ");
         println!("Puede moverse: (m)");
@@ -278,18 +314,56 @@ impl Cliente {
             }
         }
     }
-
+    /// Función que permite al jugador moverse
+    /// 
+    /// # Args
+    /// 
+    /// `barcos` - Barcos del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<Instruccion, CustomError>` - Resultado de la instrucción
+    /// 
+    /// # Errors
+    /// 
+    /// Retorna un error si no se puede obtener el barco
     fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<Instruccion,CustomError> {
         let (id, posicion) = Self::obtener_barco(barcos, MOV).unwrap();
         Ok(Instruccion::Movimiento(id, posicion))
     }
-
+    /// Función que permite al jugador atacar
+    /// 
+    /// # Args
+    /// 
+    /// `barcos` - Barcos del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<Instruccion, CustomError>` - Resultado de la instrucción
+    /// 
+    /// # Errors
+    /// 
+    /// Retorna un error si no se puede obtener el barco
     fn atacar(barcos: Vec<(usize, Vec<(i32, i32)>)>) ->Result<Instruccion, CustomError>{
         let (id, posicion) = Self::obtener_barco(barcos, ATAQ).unwrap();
         
         Ok(Instruccion::Ataque(id, posicion))
     }
-
+    /// Función que permite al jugador obtener un barco
+    /// 
+    /// # Args
+    /// 
+    /// `barcos` - Barcos del jugador
+    /// 
+    /// `accion` - Acción a realizar
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(usize, (i32, i32)), CustomError>` - Resultado de la obtención del barco
+    /// 
+    /// # Errors
+    /// 
+    /// Retorna un error si no se puede obtener el barco
     fn obtener_barco(barcos: Vec<(usize, Vec<(i32, i32)>)>, accion: &str) -> Result<(usize, (i32, i32)),CustomError>{
         println!("Elige un barco para {}:", accion);
         for (i, (id, posicion)) in barcos.iter().enumerate() {

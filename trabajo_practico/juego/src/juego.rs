@@ -99,6 +99,7 @@ impl Juego {
                                             self.turno,
                                             &mut conexion,
                                             &mut self.jugadores,
+                                            server,
                                         ) {
                                             Ok(_) => break,
                                             Err(_) => {
@@ -160,6 +161,7 @@ impl Juego {
         jugador_actual: usize,
         conexion: &mut MutexGuard<'_, TcpStream>,
         jugadores:&mut [Jugador],
+        server: &Server,
     ) -> Result<(), CustomError> {
         match instruccion {
             Instruccion::Movimiento(barco_id, cordenadas) => {
@@ -173,7 +175,7 @@ impl Juego {
                 //Self::procesar_movimiento(movimiento, &mut self.jugadores);
             }
             Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
-                Self::procesar_ataque(coordenadas_ataque, jugador_actual, jugadores);
+                Self::procesar_ataque(coordenadas_ataque, jugador_actual, jugadores, server,conexion);
             }
             Instruccion::Saltar => {
                 println!("Jugador salta su turno.");
@@ -316,12 +318,14 @@ impl Juego {
         coordenadas_ataque: (i32, i32),
         jugador_actual: usize,
         jugadores: &mut [Jugador],
+        server: &Server,
+        conexion: &mut MutexGuard<'_, TcpStream>
     ) {
         let mut puntos_ganados = 0;
         let mut monedas_ganadas = 0;
         for jugador in jugadores.iter_mut() {
             if jugador.id != jugador_actual {
-                let (puntos,monedas) = jugador.procesar_ataque(coordenadas_ataque);
+                let (puntos,monedas) = jugador.procesar_ataque(coordenadas_ataque,server);
                 puntos_ganados += puntos;
                 monedas_ganadas += monedas;
                 if puntos > 0 {
@@ -329,10 +333,27 @@ impl Juego {
                 }
             }
         }
+        let mensaje = Mensaje::MensajeInfoAaque(puntos_ganados, monedas_ganadas);
+        let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
+        Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
         jugadores[jugador_actual].puntos += puntos_ganados;
         jugadores[jugador_actual].monedas += monedas_ganadas;
     }
-
+    /// Función que envía un mensaje a un cliente
+    /// 
+    /// # Args
+    /// 
+    /// `stream` - Stream de conexión   
+    /// 
+    /// `msg` - Mensaje a enviar
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución
+    /// 
+    /// # Errors
+    /// 
+    /// `CustomError` - Error personalizado
     fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
@@ -340,6 +361,16 @@ impl Juego {
         result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
+
+    /// Función que actualiza el ranking de los jugadores
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución
+    /// 
+    /// # Errors
+    /// 
+    /// `CustomError` - Error personalizado
     pub fn actualizar_ranking(&self) -> Result<(), CustomError> {
         let dir_archivo: &str = "../archivos";
         let nombre_archivo = format!("{}/ranking.json", dir_archivo);
