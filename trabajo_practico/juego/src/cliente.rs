@@ -9,7 +9,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::mensaje::{Instruccion, Mensaje};
+use crate::instruccion::Instruccion;
+use crate::mensaje::Mensaje;
 /// Struct que representa un cliente
 pub struct Cliente {
     shared_stream: Arc<Mutex<TcpStream>>,
@@ -20,17 +21,17 @@ pub struct Cliente {
 
 impl Cliente {
     /// Función que crea un nuevo cliente
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `addr` - Dirección del servidor
-    /// 
+    ///
     /// `_id` - Identificador del cliente
-    /// 
+    ///
     /// `nombre` - Nombre del cliente
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Result<Self, CustomError>` - Resultado de la creación del cliente
     pub fn new(addr: String, _id: usize, nombre: String) -> Result<Self, CustomError> {
         let stream = TcpStream::connect(addr).map_err(|_| CustomError::ErrorCreatingSocket)?;
@@ -43,13 +44,13 @@ impl Cliente {
         })
     }
     /// Función que ejecuta el cliente
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Result<(), CustomError>` - Resultado de la ejecución del cliente
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Retorna un error si no se puede recibir el mensaje del servidor
     pub fn run(&mut self) -> Result<(), CustomError> {
         loop {
@@ -94,19 +95,38 @@ impl Cliente {
                                         }
                                         println!();
                                     }
-                                    let accion = Self::pedir_instrucciones(barcos, monedas);
-                                    let mensaje_serializado =
-                                        serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
-                                    self.enviar_respuesta(mensaje_serializado.as_str())?;
+                                
+                                    match Self::pedir_instrucciones(barcos, monedas) {
+                                        Ok((accion, nuevas_monedas)) => {
+                                            let mensaje_serializado =
+                                                serde_json::to_string(&Mensaje::Accion(accion,nuevas_monedas)).unwrap();
+                                            self.enviar_respuesta(mensaje_serializado.as_str())?;
+                                        },
+                                        Err(err) => {
+                                            // Manejo del error, por ejemplo:
+                                            println!("Error al pedir instrucciones: {}", err);
+                                            // o retornar un error, según sea necesario
+                                        },
+                                    }
                                 }
                                 Mensaje::RepetirAccion(mensaje, barcos, monedas) => {
                                     println!("{}", mensaje);
-                                    let accion = Self::pedir_instrucciones(barcos, monedas);
-                                    let mensaje_serializado =
-                                        serde_json::to_string(&Mensaje::Accion(accion)).unwrap();
-                                    self.enviar_respuesta(mensaje_serializado.as_str())?;
+                                    match Self::pedir_instrucciones(barcos, monedas) {
+                                        Ok((accion, nuevas_monedas)) => {
+                                            let mensaje_serializado =
+                                                serde_json::to_string(&Mensaje::Accion(accion,nuevas_monedas)).unwrap();
+                                            self.enviar_respuesta(mensaje_serializado.as_str())?;
+                                        },
+                                        Err(err) => {
+                                            // Manejo del error, por ejemplo:
+                                            println!("Error al pedir instrucciones: {}", err);
+                                            // o retornar un error, según sea necesario
+                                        },
+                                    }
                                 }
+                                
                                 Mensaje::EventoSorpresa => {
+                                   
                                     println!("Un cargamento con recursos aparecio de repente! se el primero en reclamarlo ingresando: primero");
                                     let mut respuesta = String::new();
                                     io::stdin()
@@ -114,15 +134,18 @@ impl Cliente {
                                         .expect("Error al leer la respuesta.");
                                     self.enviar_respuesta(respuesta.trim())?;
                                 }
-                                Mensaje::MensajeInfoAaque(puntos,monedas ) =>{
+                                Mensaje::MensajeInfoAaque(puntos, monedas) => {
                                     if puntos == 0 {
                                         println!("Has fallado el ataque, no has ganado puntos ni monedas");
                                     } else {
-                                    println!("Has golpeado a un barco enemigo, has ganado {} puntos y {} monedas", puntos, monedas);
-                                }
+                                        println!("Has golpeado a un barco enemigo, has ganado {} puntos y {} monedas", puntos, monedas);
+                                    }
                                 }
                                 Mensaje::BarcoHundido => {
-                                    println!("Han golpeado tu barco ");
+                                    println!("Han golpeado un barco tuyo y se ha hundido");
+                                }
+                                Mensaje::BarcoGolpead(coordenadas) => {
+                                    println!("Han golpeado un barco tuyo en las coordenadas {:?}", coordenadas);
                                 }
                                 Mensaje::EventoSorpresaResultado(resultado) => {
                                     if resultado {
@@ -135,7 +158,10 @@ impl Cliente {
                                     Self::mostrar_ranking(ranking)?;
                                 }
                                 Mensaje::FinPartida(nombre, puntos) => {
-                                    println!("Fin de la partida. El jugador {} ha ganado con {} puntos", nombre, puntos);
+                                    println!(
+                                        "Fin de la partida. El jugador {} ha ganado con {} puntos",
+                                        nombre, puntos
+                                    );
                                     break;
                                 }
                                 _ => {
@@ -143,31 +169,30 @@ impl Cliente {
                                 }
                             }
                         }
-                        Err(err) => {
-                            println!("Error al deserializar el mensaje: {}", err);
+                        Err(_) => {
+                            return Err(CustomError::ErrorDeserealizandoMensaje);
                         }
                     }
                 }
-                Err(e) => {
-                    println!("Error al recibir mensaje del servidor: {:?}", e);
-                    break;
+                Err(_) => {
+                    return Err(CustomError::ErrorRecibiendoMensaje);
                 }
             }
         }
         Ok(())
     }
     /// Función que envía una respuesta al servidor
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `respuesta` - Respuesta a enviar al servidor
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Result<(), CustomError>` - Resultado del envío de la respuesta
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Retorna un error si no se puede enviar la respuesta
     pub fn enviar_respuesta(&mut self, respuesta: &str) -> Result<(), CustomError> {
         let mut stream = self.shared_stream.lock().unwrap();
@@ -180,15 +205,15 @@ impl Cliente {
         Ok(())
     }
     /// Función que muestra el ranking de los jugadores
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `ranking` - Ranking de los jugadores
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `()` - No retorna nada
-    fn mostrar_ranking(ranking: Vec<(String, usize)>) -> Result<(), CustomError>{
+    fn mostrar_ranking(ranking: Vec<(String, usize)>) -> Result<(), CustomError> {
         if ranking.is_empty() {
             return Err(CustomError::ErrorRankingVacio);
         }
@@ -202,13 +227,14 @@ impl Cliente {
     /// Funcion que permite al jugador abrir la tienda y comprar barcos
     /// # Args
     /// `coordenadas_ataque` - Coordenadas del ataque realizado por el jugador
-    /// 
+    ///
     /// `mapa` - Mapa en el que se encuentra el jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `usize` - Puntos ganados por el jugador
-    fn abrir_tienda(monedas: usize) -> Instruccion {
+    fn abrir_tienda(monedas: usize) -> Result<(Instruccion,usize), CustomError>{
+        let mut monedas_gastadas = 0;
         println!("Opciones para comprar: ");
         println!("(a) Acorazado de 3 casilleros: $300");
         println!("(b) Buqe de 2 casilleros: $200");
@@ -222,35 +248,44 @@ impl Cliente {
         let mut tipo_barco = 0;
         match compra.trim() {
             "a" => {
-                if monedas < 300 {exitosa = false}
+                if monedas < 300 {
+                    exitosa = false
+                }
+                monedas_gastadas = 300;
                 tipo_barco = 3;
-            },
+            }
             "b" => {
-                if monedas < 200 {exitosa = false}
+                if monedas < 200 {
+                    exitosa = false
+                }
+                monedas_gastadas = 200;
                 tipo_barco = 2;
-            },
+            }
             "c" => {
-                if monedas < 100 {exitosa = false}
+                if monedas < 100 {
+                    exitosa = false
+                }
+                monedas_gastadas = 100;
                 tipo_barco = 1;
-            },
+            }
             _ => {}
         }
         if !exitosa {
             println!("No cuenta con el dinero suficiente para comprar ese barco");
-            Instruccion::Saltar
+            Ok((Instruccion::Saltar,0))
         } else {
-            Instruccion::Compra(tipo_barco)
+            Ok((Instruccion::Compra(tipo_barco),monedas_gastadas))
         }
     }
 
     /// Función que recibe un mensaje del servidor
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Result<String, CustomError>` - Resultado del mensaje recibido
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Retorna un error si no se puede recibir el mensaje
     pub fn recibir_mensaje(&mut self) -> Result<String, CustomError> {
         let mut buffer = [0; 2048];
@@ -263,29 +298,29 @@ impl Cliente {
     }
 
     /// Función que cambia el nombre del jugador
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `nombre` - Nuevo nombre del jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `()` - No retorna nada
     pub fn cambiar_nombre(&mut self, nombre: String) {
         self.nombre = nombre;
     }
     /// Función que obtiene el nombre del jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `String` - Nombre del jugador
     pub fn obtener_nombre(&self) -> String {
         self.nombre.clone()
     }
     /// Función que imprime las acciones que puede realizar el jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `()` - No retorna nada
     fn imprimir_acciones() {
         println!("Realice una accion: ");
@@ -295,19 +330,29 @@ impl Cliente {
         println!("Puede saltar turno: (s)");
         println!("Puede ver el ranking: (r)")
     }
-
-    fn pedir_instrucciones(barcos: Vec<(usize, Vec<(i32, i32)>)>, monedas: usize) -> Instruccion {
+    /// Función que permite al jugador pedir instrucciones
+    ///
+    /// # Args
+    ///
+    /// `barcos` - Barcos del jugador
+    ///
+    /// `monedas` - Monedas del jugador
+    ///
+    /// # Returns
+    ///
+    /// `Instruccion` - Instrucción del jugador
+    fn pedir_instrucciones(barcos: Vec<(usize, Vec<(i32, i32)>)>, monedas: usize) ->Result<(Instruccion,usize), CustomError>{
         let mut accion = String::new();
         io::stdin()
             .read_line(&mut accion)
             .expect("Error al leer la entrada");
 
         match accion.trim() {
-            "m" => Self::moverse(barcos).unwrap(),
-            "a" => Self::atacar(barcos).unwrap(),
+            "m" => Self::moverse(barcos),
+            "a" => Self::atacar(barcos),
             "t" => Self::abrir_tienda(monedas),
-            "s" => Instruccion::Saltar,
-            "r" => Instruccion::Ranking,
+            "s" => Self::saltar(),
+            "r" => Self::ranking(),
             _ => {
                 println!("Error en la accion. Por favor, elige una accion valida (m, a, t, s).");
                 Self::pedir_instrucciones(barcos, monedas)
@@ -315,56 +360,66 @@ impl Cliente {
         }
     }
     /// Función que permite al jugador moverse
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `barcos` - Barcos del jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Result<Instruccion, CustomError>` - Resultado de la instrucción
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Retorna un error si no se puede obtener el barco
-    fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<Instruccion,CustomError> {
+    fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<(Instruccion,usize), CustomError> {
         let (id, posicion) = Self::obtener_barco(barcos, MOV).unwrap();
-        Ok(Instruccion::Movimiento(id, posicion))
+        Ok((Instruccion::Movimiento(id, posicion), 0))
     }
     /// Función que permite al jugador atacar
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `barcos` - Barcos del jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Result<Instruccion, CustomError>` - Resultado de la instrucción
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Retorna un error si no se puede obtener el barco
-    fn atacar(barcos: Vec<(usize, Vec<(i32, i32)>)>) ->Result<Instruccion, CustomError>{
+    fn atacar(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<(Instruccion,usize), CustomError> {
         let (id, posicion) = Self::obtener_barco(barcos, ATAQ).unwrap();
-        
-        Ok(Instruccion::Ataque(id, posicion))
+
+        Ok((Instruccion::Ataque(id, posicion),0))
+    }
+
+    fn saltar () -> Result<(Instruccion,usize), CustomError> {
+        Ok((Instruccion::Saltar,0))
+    }
+    fn ranking () -> Result<(Instruccion,usize), CustomError> {
+        Ok((Instruccion::Ranking,0))
     }
     /// Función que permite al jugador obtener un barco
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `barcos` - Barcos del jugador
-    /// 
+    ///
     /// `accion` - Acción a realizar
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Result<(usize, (i32, i32)), CustomError>` - Resultado de la obtención del barco
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Retorna un error si no se puede obtener el barco
-    fn obtener_barco(barcos: Vec<(usize, Vec<(i32, i32)>)>, accion: &str) -> Result<(usize, (i32, i32)),CustomError>{
+    fn obtener_barco(
+        barcos: Vec<(usize, Vec<(i32, i32)>)>,
+        accion: &str,
+    ) -> Result<(usize, (i32, i32)), CustomError> {
         println!("Elige un barco para {}:", accion);
         for (i, (id, posicion)) in barcos.iter().enumerate() {
             println!("{}: ID: {}, Posicion: {:?}", i, id, posicion);
@@ -394,15 +449,15 @@ impl Cliente {
         Ok((barco_seleccionado, cordenadas))
     }
     /// Función que pide las coordenadas al usuario
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `(i32, i32)` - Coordenadas ingresadas por el usuario
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Retorna un error si las coordenadas ingresadas no son válidas
-    fn pedir_coordenadas() -> Result<(i32, i32), CustomError>{
+    fn pedir_coordenadas() -> Result<(i32, i32), CustomError> {
         loop {
             println!("Ingresa las coordenadas en formato 'x,y': ");
 

@@ -1,4 +1,3 @@
-use acciones::accion::Accion;
 use barcos::{barco::Barco, estado_barco::EstadoBarco};
 use libreria::custom_error::CustomError;
 
@@ -49,13 +48,13 @@ impl Jugador {
         }
     }
     /// Función que envía las instrucciones al jugador
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `server` - Servidor en el que se encuentra el jugador
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `()` - No retorna nada
     pub fn enviar_instrucciones(&self, server: &Server) {
         if let Some(conexion) = server.conexiones_jugadores.get(&self.id) {
@@ -68,34 +67,38 @@ impl Jugador {
         }
     }
     /// Función que maneja el turno del jugador
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `server` - Servidor en el que se encuentra el jugador
-    /// 
+    ///
     /// # Returns
-    /// 
-    /// 
+    ///
+    ///
     pub fn manejar_turno(&mut self, server: &Server) {
-        let _ = self
-            .mapa
-            .enviar_tablero(self.id.to_string(), server, &self.barcos, self.monedas.clone());
+        let _ = self.mapa.enviar_tablero(
+            self.id.to_string(),
+            server,
+            &self.barcos,
+            self.monedas.clone(),
+        );
     }
     /// Función que permite al jugador agregar un barco al tablero
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `tamanio_barco` - Tamaño del barco a agregar
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `()` - No retorna nada
     pub fn agregar_barco(&mut self, tamanio_barco: usize) {
         let vec_posiciones = self
             .mapa
             .obtener_posiciones_libres_contiguas(self.id.to_string(), tamanio_barco);
-        let id_barco = self.barcos.len() ;
-        self.barcos.push(Barco::new(id_barco, tamanio_barco, vec_posiciones));
+        let id_barco = self.barcos.len();
+        self.barcos
+            .push(Barco::new(id_barco, tamanio_barco, vec_posiciones));
     }
 
     /// Función que permite al jugador moverse en el tablero
@@ -121,19 +124,27 @@ impl Jugador {
             }
         }
 
-        if self.mapa.actualizar_posicion_barco(&mut self.barcos[barco], coordenadas_destino.clone(), self.id) {
+        if self.mapa.actualizar_posicion_barco(
+            &mut self.barcos[barco],
+            coordenadas_destino.clone(),
+            self.id,
+        ) {
             self.barcos[barco].actualizar_posicion(coordenadas_destino);
         }
     }
-
+    /// Función que permite al jugador obtener un barco
+    /// 
+    /// # Args
+    /// 
+    /// `barco_seleccionado` - Indice del barco seleccionado
+    /// 
+    /// # Returns
+    /// 
+    /// `Barco` - Barco seleccionado
     pub fn obtener_barco(&self, barco_seleccionado: usize) -> Barco {
         self.barcos[barco_seleccionado].clone()
     }
 
-    fn _abrir_tienda(&self) -> Accion {
-        println!("Tienda abierta");
-        Accion::Tienda(self.puntos)
-    }
     /// Función que procesa un ataque realizado por un jugador
     ///
     /// # Args
@@ -146,7 +157,11 @@ impl Jugador {
     ///
     /// `usize` - Puntos ganados por el jugador
 
-    pub fn procesar_ataque(&mut self, coordenadas_ataque: (i32, i32), server: &Server) -> (usize,usize) {
+    pub fn procesar_ataque(
+        &mut self,
+        coordenadas_ataque: (i32, i32),
+        server: &Server,
+    ) -> (usize, usize) {
         let mut puntos = 0;
         let mut monedas = 0;
         let mut barcos_hundidos = Vec::new();
@@ -158,18 +173,47 @@ impl Jugador {
                     barco.estado = EstadoBarco::Hundido;
                     puntos += 15;
                     monedas += 100;
-                    let conexion = server.conexiones_jugadores.get(&self.id).unwrap().lock().unwrap();
-                    let mensaje_serializado = serde_json::to_string(&Mensaje::BarcoHundido).unwrap();
-                    let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
+                    let conexion = server
+                        .conexiones_jugadores
+                        .get(&self.id)
+                        .unwrap()
+                        .lock()
+                        .unwrap();
+                    let mensaje_serializado =
+                        serde_json::to_string(&Mensaje::BarcoHundido).unwrap();
+                    let _ =
+                        Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
                     barcos_hundidos.push(coordenadas_ataque);
                 } else {
                     if barco.estado == EstadoBarco::Sano {
                         barco.estado = EstadoBarco::Golpeado;
+                        let conexion = server
+                            .conexiones_jugadores
+                            .get(&self.id)
+                            .unwrap()
+                            .lock()
+                            .unwrap();
+                        let mensaje_serializado = serde_json::to_string(&Mensaje::BarcoGolpead(
+                            coordenadas_ataque,
+                        ));
+                        let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.unwrap().as_bytes().to_vec());
                         println!("Le pegaste a un barco");
                         println!("Ganaste 5 puntos");
                         puntos += 5;
                         monedas += 50;
+                        
                     } else if barco.estado == EstadoBarco::Golpeado {
+                        let conexion = server
+                            .conexiones_jugadores
+                            .get(&self.id)
+                            .unwrap()
+                            .lock()
+                            .unwrap();
+                        let mensaje_serializado = serde_json::to_string(&Mensaje::BarcoGolpead(
+                            coordenadas_ataque,
+                        ));
+                        let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.unwrap().as_bytes().to_vec());
+            
                         println!("Ganaste 5 puntos");
                         puntos += 5;
                         monedas += 50;
@@ -185,20 +229,20 @@ impl Jugador {
             self.mapa.marcar_hundido(coordenadas);
         }
 
-        (puntos,monedas)
+        (puntos, monedas)
     }
     /// Función que envía un mensaje al servidor
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `stream` - Stream por el cual se enviará el mensaje
-    /// 
+    ///
     /// `msg` - Mensaje a enviar
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Result<(), CustomError>` - Resultado de la operación
-    /// 
+    ///
     /// # Errors
     fn enviar_mensaje(mut stream: &TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);

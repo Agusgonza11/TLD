@@ -1,4 +1,7 @@
-use libreria::{constantes::{CORDENADAS_BOMBA, PREMIO}, custom_error::CustomError};
+use libreria::{
+    constantes::{CORDENADAS_BOMBA, PREMIO},
+    custom_error::CustomError,
+};
 use std::{
     collections::HashMap,
     io::{Read, Write},
@@ -8,6 +11,8 @@ use std::{
 };
 
 use crate::{juego::Juego, jugador::Jugador, mensaje::Mensaje};
+
+/// Estructura que representa el servidor
 
 #[derive(Clone)]
 pub struct Server {
@@ -21,6 +26,15 @@ pub struct Server {
 }
 
 impl Server {
+    /// Función que crea un nuevo servidor
+    ///
+    /// # Returns
+    ///
+    /// `Result<Self, CustomError>` - Resultado de la función
+    ///
+    /// # Errors
+    ///
+    /// `CustomError::ErrorCreatingSocket` - Error al crear el socket
     pub fn new() -> Result<Self, CustomError> {
         let server =
             TcpListener::bind("127.0.0.1:8080").map_err(|_| CustomError::ErrorCreatingSocket)?;
@@ -39,7 +53,17 @@ impl Server {
             jugadores_conectados: 0,
         })
     }
-
+    /// Función que ejecuta el servidor
+    ///
+    /// # Returns
+    ///
+    /// `Result<(), CustomError>` - Resultado de la función
+    ///
+    /// # Errors
+    ///
+    /// `CustomError::ErrorAceptandoConexion` - Error al aceptar la conexión
+    ///
+    /// `CustomError::ErrorRecibiendoInstruccion` - Error al recibir la instrucción
     pub fn run(&mut self) -> Result<(), CustomError> {
         let mut self_clone = self.clone();
         for stream in self.arc_server.incoming() {
@@ -66,7 +90,17 @@ impl Server {
         }
         Ok(())
     }
-
+    /// Función que maneja al cliente
+    ///
+    /// # Args
+    ///
+    /// `stream` - Flujo de datos
+    ///
+    /// `nombre_usuario` - Nombre del usuario
+    ///
+    /// # Returns
+    ///
+    /// `Result<(), CustomError>` - Resultado de la función
     fn handle_client(
         &mut self,
         stream: TcpStream,
@@ -83,14 +117,26 @@ impl Server {
             .agregar_jugador(jugador_id, nombre_usuario.clone());
         let self_clone = self.clone();
         let handle = thread::spawn(move || {
-            self_clone.preguntar_comienzo_juego();
+            let _ = self_clone
+                .preguntar_comienzo_juego()
+                .map_err(|_| CustomError::ErrorThreads);
         });
 
         self.jugadores.lock().unwrap().push(handle);
 
         Ok(())
     }
-
+    /// Función que envía una instrucción
+    ///
+    /// # Args
+    ///
+    /// `player_id` - ID del jugador
+    ///
+    /// `instruccion` - Instrucción
+    ///
+    /// # Returns
+    ///
+    /// `Result<(), CustomError>` - Resultado de la función
     pub fn enviar_instruccion(
         &self,
         player_id: usize,
@@ -106,7 +152,17 @@ impl Server {
             Err(CustomError::ErrorJugadorInexistente)
         }
     }
-
+    /// Función que envía un mensaje
+    ///
+    /// # Args
+    ///
+    /// `stream` - Flujo de datos
+    ///
+    /// `msg` - Mensaje
+    ///
+    /// # Returns
+    ///
+    /// `Result<(), CustomError>` - Resultado de la función
     pub fn enviar_mensaje(stream: &mut TcpStream, msg: Vec<u8>) -> Result<(), CustomError> {
         let result_stream = stream.write_all(&msg);
         result_stream.map_err(|_| CustomError::ErrorEnviarMensaje)?;
@@ -114,7 +170,15 @@ impl Server {
         result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
-
+    /// Función que recibe un mensaje
+    ///
+    /// # Args
+    ///
+    /// `id` - ID del jugador
+    ///
+    /// # Returns
+    ///
+    /// `Result<String, CustomError>` - Resultado de la función
     pub fn recibir_mensaje(&mut self, id: usize) -> Result<String, CustomError> {
         let mut buffer = [0; 2048];
         let stream = self.conexiones_jugadores.get(&id).unwrap();
@@ -126,7 +190,9 @@ impl Server {
         let message = String::from_utf8_lossy(&buffer[..bytes_read]).to_string();
         Ok(message)
     }
-
+    /// Función que espera a los jugadores
+    ///
+    /// `()` - No retorna nada
     fn esperar_jugadores(&self) {
         for connection in self.conexiones_jugadores.values() {
             let mut connection = connection.lock().unwrap();
@@ -137,11 +203,16 @@ impl Server {
 
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
-
-    pub fn preguntar_comienzo_juego(&self) {
+    /// Función que pregunta si se quiere comenzar el juego
+    ///
+    /// # Returns
+    ///
+    /// `Result<(), CustomError>` - Ok si se puede comenzar el juego o Error si no se puede
+    pub fn preguntar_comienzo_juego(&self) -> Result<(), CustomError> {
         if self.conexiones_jugadores.len() < 2 {
             println!("Esperando más jugadores para comenzar el juego...");
             self.esperar_jugadores();
+            Ok(())
         } else {
             let mut respuestas: HashMap<usize, String> = HashMap::new();
 
@@ -150,7 +221,7 @@ impl Server {
                 let mensaje_serializado =
                     serde_json::to_string(&Mensaje::PreguntaComienzo).unwrap();
                 Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec())
-                    .unwrap();
+                    .map_err(|_| CustomError::ErrorEnviarMensaje)?;
             }
 
             for (player_id, connection) in &self.conexiones_jugadores {
@@ -163,23 +234,46 @@ impl Server {
                 respuestas.insert(*player_id, respuesta);
             }
             if respuestas.values().all(|respuesta| respuesta == "si") {
-                self.comenzar_juego();
+                let _ = self.comenzar_juego();
+                Ok(())
             } else {
                 println!("Al menos un jugador no quiere comenzar el juego. Esperando nuevas conexiones...");
-                self.preguntar_comienzo_juego();
+                let _ = self.preguntar_comienzo_juego();
 
+                Ok(())
             }
         }
     }
-    pub fn comenzar_juego(&self) {
+    /// Función que comienza el juego
+    ///
+    /// # Returns
+    ///
+    /// `Result<(), CustomError>` - Resultado de la función
+    ///
+    /// # Errors
+    ///
+    /// `CustomError::ErrorThreads` - Error en los threads
+    pub fn comenzar_juego(&self) -> Result<(), CustomError> {
         let mut self_clone = self.clone();
         let mut self_clone_dos = self.clone();
         let handle: thread::JoinHandle<()> = thread::spawn(move || {
-            self_clone.juego.iniciar_juego(&mut self_clone_dos).unwrap();
+            let _ = self_clone
+                .juego
+                .iniciar_juego(&mut self_clone_dos)
+                .map_err(|_| CustomError::ErrorThreads);
         });
         self.jugadores.lock().unwrap().push(handle);
+        Ok(())
     }
-
+    /// Función que crea un evento sorpresa
+    ///
+    /// # Args
+    ///
+    /// `jugadores` - Vector de jugadores
+    ///
+    /// # Returns
+    ///
+    /// `()` - No retorna nada
     pub fn crear_evento_sorpresa(&mut self, jugadores: &mut [Jugador]) {
         for connection in self.conexiones_jugadores.values() {
             let mut connection = connection.lock().unwrap();
@@ -187,9 +281,9 @@ impl Server {
             Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec())
                 .unwrap();
         }
-
+    
         let mut primero = None;
-
+    
         for (player_id, connection) in &self.conexiones_jugadores {
             let mut connection = connection.lock().unwrap();
             let mut buffer = [0; 512];
@@ -197,7 +291,7 @@ impl Server {
             let respuesta = String::from_utf8_lossy(&buffer[..bytes_read])
                 .trim()
                 .to_string();
-
+    
             if respuesta == "primero" && primero.is_none() {
                 primero = Some(*player_id);
                 jugadores[*player_id].monedas += PREMIO;
@@ -212,16 +306,20 @@ impl Server {
                     .unwrap();
             }
         }
-        match primero {
-            Some(p) => {
-                let posiciones = CORDENADAS_BOMBA;
-                for posicion in posiciones {
-                    let self_clone = self.clone();
-                    let mut conexion = self_clone.conexiones_jugadores.get(&p).unwrap().lock().unwrap();
-                    Juego::procesar_ataque(*posicion, p, jugadores, &self_clone,&mut conexion);
-                }
-            },
-            None => {},
+    
+        if let Some(p) = primero {
+            let posiciones = CORDENADAS_BOMBA;
+            for posicion in posiciones {
+                let self_clone = self.clone();
+                let mut conexion = self_clone
+                    .conexiones_jugadores
+                    .get(&p)
+                    .unwrap()
+                    .lock()
+                    .unwrap();
+                Juego::procesar_ataque(*posicion, p, jugadores, &self_clone, &mut conexion);
+            }
         }
     }
+    
 }

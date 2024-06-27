@@ -19,11 +19,23 @@ impl Barco {
             estado: EstadoBarco::Sano,
         }
     }
-
+    /// Función que obtiene los datos del barco
+    /// 
+    /// # Returns
+    /// 
+    /// `(usize, Vec<(i32, i32)>)` - Tupla con el id y las posiciones del barco
     pub fn obtener_datos(&self) -> (usize, Vec<(i32, i32)>) {
         (self.id, self.posiciones.clone())
     }
-
+    /// Función que actualiza la posición del barco
+    /// 
+    /// # Args
+    /// 
+    /// `nueva_posicion` - Nueva posición del barco
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     pub fn actualizar_posicion(&mut self, nueva_posicion: Vec<(i32, i32)>) {
         println!("antiguas posiciones {:?}", self.posiciones);
         self.posiciones = nueva_posicion;
