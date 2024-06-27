@@ -18,5 +18,8 @@ pub enum Mensaje {
     EventoSorpresaResultado(bool),
     Registro,
     Ranking(Vec<(String, usize)>),
+    CompraExitosa(usize, usize),
+    NotificacionCompra(String,usize),
     FinPartida(String, usize),
+
 }

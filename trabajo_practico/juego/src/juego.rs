@@ -65,9 +65,7 @@ impl Juego {
             }
 
             println!(
-                "Turno del jugador {}",
-                self.jugadores[self.turno].nombre_usuario
-            );
+                "Turno del jugador {}", self.jugadores[self.turno].nombre_usuario);
 
             if let Some(conexion) = server
                 .conexiones_jugadores
@@ -189,6 +187,19 @@ impl Juego {
             Instruccion::Compra(barco_elegido) => {
                 Self::abrir_tienda(jugadores, jugador_actual, barco_elegido);
                 jugadores[jugador_actual].monedas -= monedas;
+                let mensaje = Mensaje::CompraExitosa(jugadores[jugador_actual].monedas, barco_elegido);
+                let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
+                Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
+                //mensaje para el resto sobre la compra
+                let mensaje = Mensaje::NotificacionCompra(jugadores[jugador_actual].nombre_usuario.clone(), barco_elegido);
+                let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
+
+                for (id, conexion) in &server.conexiones_jugadores {
+                    if *id != jugador_actual {
+                        let mut conexion = conexion.lock().unwrap();
+                        Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
+                    }
+                }
             }
             Instruccion::Ranking => {
                 if Self::mostrar_ranking(conexion).is_err() {

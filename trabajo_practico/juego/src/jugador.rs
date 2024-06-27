@@ -197,8 +197,6 @@ impl Jugador {
                             coordenadas_ataque,
                         ));
                         let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.unwrap().as_bytes().to_vec());
-                        println!("Le pegaste a un barco");
-                        println!("Ganaste 5 puntos");
                         puntos += 5;
                         monedas += 50;
                         
@@ -213,8 +211,6 @@ impl Jugador {
                             coordenadas_ataque,
                         ));
                         let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.unwrap().as_bytes().to_vec());
-            
-                        println!("Ganaste 5 puntos");
                         puntos += 5;
                         monedas += 50;
                     }

@@ -234,6 +234,8 @@ impl Server {
                 respuestas.insert(*player_id, respuesta);
             }
             if respuestas.values().all(|respuesta| respuesta == "si") {
+                println!("Todos los jugadores quieren comenzar el juego.");
+                println!("Comenzando el juego...");
                 let _ = self.comenzar_juego();
                 Ok(())
             } else {
@@ -275,6 +277,8 @@ impl Server {
     ///
     /// `()` - No retorna nada
     pub fn crear_evento_sorpresa(&mut self, jugadores: &mut [Jugador]) {
+        //esperar 2 segundos
+        std::thread::sleep(std::time::Duration::from_secs(2));
         for connection in self.conexiones_jugadores.values() {
             let mut connection = connection.lock().unwrap();
             let mensaje_serializado = serde_json::to_string(&Mensaje::EventoSorpresa).unwrap();

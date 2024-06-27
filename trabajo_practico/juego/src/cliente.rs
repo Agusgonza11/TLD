@@ -87,6 +87,7 @@ impl Cliente {
                                 }
                                 Mensaje::Puntos(puntos) => {
                                     println!("Puntos: {}", puntos);
+                                    println!("Juego en curso...Espera tu turno")
                                 }
                                 Mensaje::Tablero(tablero, barcos, monedas) => {
                                     for row in tablero {
@@ -103,9 +104,7 @@ impl Cliente {
                                             self.enviar_respuesta(mensaje_serializado.as_str())?;
                                         },
                                         Err(err) => {
-                                            // Manejo del error, por ejemplo:
-                                            println!("Error al pedir instrucciones: {}", err);
-                                            // o retornar un error, según sea necesario
+                                            return Err(err);
                                         },
                                     }
                                 }
@@ -118,9 +117,7 @@ impl Cliente {
                                             self.enviar_respuesta(mensaje_serializado.as_str())?;
                                         },
                                         Err(err) => {
-                                            // Manejo del error, por ejemplo:
-                                            println!("Error al pedir instrucciones: {}", err);
-                                            // o retornar un error, según sea necesario
+                                            return Err(err);
                                         },
                                     }
                                 }
@@ -156,6 +153,12 @@ impl Cliente {
                                 }
                                 Mensaje::Ranking(ranking) => {
                                     Self::mostrar_ranking(ranking)?;
+                                }
+                                Mensaje::CompraExitosa(tipo_barco, monedas) => {
+                                    println!("Has comprado un barco de tipo {}, ahora tienes {} monedas", tipo_barco, monedas);
+                                }
+                                Mensaje::NotificacionCompra(mensaje, tipo_barco) => {
+                                    println!("El jugador {} ha comprado un barco de tipo {}", mensaje, tipo_barco);
                                 }
                                 Mensaje::FinPartida(nombre, puntos) => {
                                     println!(
