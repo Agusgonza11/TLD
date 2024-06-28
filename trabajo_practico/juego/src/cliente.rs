@@ -61,117 +61,143 @@ impl Cliente {
                         continue;
                     }
                     match serde_json::from_str::<Mensaje>(&mensaje_serializado) {
-                        Ok(mensaje) => {
-                            match mensaje {
-                                Mensaje::Registro => {
-                                    println!("Ingrese su nombre de usuario: ");
-                                    let mut respuesta = String::new();
-                                    io::stdin()
-                                        .read_line(&mut respuesta)
-                                        .expect("Error al leer la respuesta.");
-                                    self.enviar_respuesta(respuesta.trim())?;
-                                }
-                                Mensaje::PreguntaComienzo => {
-                                    println!("¿Ya hay jugadores suficientes.Deseas comenzar el juego? (si/no)");
-                                    let mut respuesta = String::new();
-                                    io::stdin()
-                                        .read_line(&mut respuesta)
-                                        .expect("Error al leer la respuesta.");
-                                    self.enviar_respuesta(respuesta.trim())?;
-                                }
-                                Mensaje::RealiceAccion => {
-                                    Self::imprimir_acciones();
-                                }
-                                Mensaje::Esperando => {
-                                    println!("Esperando mas jugadores para comenzar el juego...");
-                                }
-                                Mensaje::Puntos(puntos) => {
-                                    println!("Puntos: {}", puntos);
-                                    println!("Juego en curso...Espera tu turno")
-                                }
-                                Mensaje::Tablero(tablero, barcos, monedas) => {
-                                    for row in tablero {
-                                        for cell in row {
-                                            print!("{}", cell);
-                                        }
-                                        println!();
+                        Ok(mensaje) => match mensaje {
+                            Mensaje::Registro => {
+                                println!("Ingrese su nombre de usuario: ");
+                                let mut respuesta = String::new();
+                                io::stdin()
+                                    .read_line(&mut respuesta)
+                                    .expect("Error al leer la respuesta.");
+                                self.enviar_respuesta(respuesta.trim())?;
+                            }
+                            Mensaje::PreguntaComienzo => {
+                                println!("¿Ya hay jugadores suficientes.Deseas comenzar el juego? (si/no)");
+                                let mut respuesta = String::new();
+                                io::stdin()
+                                    .read_line(&mut respuesta)
+                                    .expect("Error al leer la respuesta.");
+                                self.enviar_respuesta(respuesta.trim())?;
+                            }
+                            Mensaje::RealiceAccion => {
+                                Self::imprimir_acciones();
+                            }
+                            Mensaje::Esperando => {
+                                println!("Esperando mas jugadores para comenzar el juego...");
+                            }
+                            Mensaje::Puntos(puntos) => {
+                                println!("Puntos: {}", puntos);
+                                println!("Juego en curso...Espera tu turno")
+                            }
+                            Mensaje::Tablero(tablero, barcos, monedas) => {
+                                for row in tablero {
+                                    for cell in row {
+                                        print!("{}", cell);
                                     }
-                                
-                                    match Self::pedir_instrucciones(barcos, monedas) {
-                                        Ok((accion, nuevas_monedas)) => {
-                                            let mensaje_serializado =
-                                                serde_json::to_string(&Mensaje::Accion(accion,nuevas_monedas)).unwrap();
-                                            self.enviar_respuesta(mensaje_serializado.as_str())?;
-                                        },
-                                        Err(err) => {
-                                            return Err(err);
-                                        },
+                                    println!();
+                                }
+
+                                match Self::pedir_instrucciones(barcos, monedas) {
+                                    Ok((accion, nuevas_monedas)) => {
+                                        let mensaje_serializado = serde_json::to_string(
+                                            &Mensaje::Accion(accion, nuevas_monedas),
+                                        )
+                                        .unwrap();
+                                        self.enviar_respuesta(mensaje_serializado.as_str())?;
                                     }
-                                }
-                                Mensaje::RepetirAccion(mensaje, barcos, monedas) => {
-                                    println!("{}", mensaje);
-                                    match Self::pedir_instrucciones(barcos, monedas) {
-                                        Ok((accion, nuevas_monedas)) => {
-                                            let mensaje_serializado =
-                                                serde_json::to_string(&Mensaje::Accion(accion,nuevas_monedas)).unwrap();
-                                            self.enviar_respuesta(mensaje_serializado.as_str())?;
-                                        },
-                                        Err(err) => {
-                                            return Err(err);
-                                        },
+                                    Err(err) => {
+                                        return Err(err);
                                     }
-                                }
-                                
-                                Mensaje::EventoSorpresa => {
-                                   
-                                    println!("Un cargamento con recursos aparecio de repente! se el primero en reclamarlo ingresando: primero");
-                                    let mut respuesta = String::new();
-                                    io::stdin()
-                                        .read_line(&mut respuesta)
-                                        .expect("Error al leer la respuesta.");
-                                    self.enviar_respuesta(respuesta.trim())?;
-                                }
-                                Mensaje::MensajeInfoAaque(puntos, monedas) => {
-                                    if puntos == 0 {
-                                        println!("Has fallado el ataque, no has ganado puntos ni monedas");
-                                    } else {
-                                        println!("Has golpeado a un barco enemigo, has ganado {} puntos y {} monedas", puntos, monedas);
-                                    }
-                                }
-                                Mensaje::BarcoHundido => {
-                                    println!("Han golpeado un barco tuyo y se ha hundido");
-                                }
-                                Mensaje::BarcoGolpead(coordenadas) => {
-                                    println!("Han golpeado un barco tuyo en las coordenadas {:?}", coordenadas);
-                                }
-                                Mensaje::EventoSorpresaResultado(resultado) => {
-                                    if resultado {
-                                        println!("Felicidades, fuiste el primero en reclamar el premio, ahora es tuyo");
-                                    } else {
-                                        println!("Una lastima, alguien se te adelanto, perdiste el premio");
-                                    }
-                                }
-                                Mensaje::Ranking(ranking) => {
-                                    Self::mostrar_ranking(ranking)?;
-                                }
-                                Mensaje::CompraExitosa(tipo_barco, monedas) => {
-                                    println!("Has comprado un barco de tipo {}, ahora tienes {} monedas", tipo_barco, monedas);
-                                }
-                                Mensaje::NotificacionCompra(mensaje, tipo_barco) => {
-                                    println!("El jugador {} ha comprado un barco de tipo {}", mensaje, tipo_barco);
-                                }
-                                Mensaje::FinPartida(nombre, puntos) => {
-                                    println!(
-                                        "Fin de la partida. El jugador {} ha ganado con {} puntos",
-                                        nombre, puntos
-                                    );
-                                    break;
-                                }
-                                _ => {
-                                    Err(CustomError::ErrorRecibiendoMensaje)?;
                                 }
                             }
-                        }
+                            Mensaje::ComenzoJuego => {
+                                println!("El juego ha comenzado");
+                            }
+                            Mensaje::RepetirAccion(mensaje, barcos, monedas) => {
+                                println!("{}", mensaje);
+                                match Self::pedir_instrucciones(barcos, monedas) {
+                                    Ok((accion, nuevas_monedas)) => {
+                                        let mensaje_serializado = serde_json::to_string(
+                                            &Mensaje::Accion(accion, nuevas_monedas),
+                                        )
+                                        .unwrap();
+                                        self.enviar_respuesta(mensaje_serializado.as_str())?;
+                                    }
+                                    Err(err) => {
+                                        return Err(err);
+                                    }
+                                }
+                            }
+
+                            Mensaje::EventoSorpresa => {
+                                println!("Un cargamento con recursos aparecio de repente! se el primero en reclamarlo ingresando: primero");
+                                let mut respuesta = String::new();
+                                io::stdin()
+                                    .read_line(&mut respuesta)
+                                    .expect("Error al leer la respuesta.");
+                                self.enviar_respuesta(respuesta.trim())?;
+                            }
+                            Mensaje::MensajeInfoAaque(puntos, monedas) => {
+                                if puntos == 0 {
+                                    println!(
+                                        "Has fallado el ataque, no has ganado puntos ni monedas"
+                                    );
+                                } else {
+                                    println!("Has golpeado a un barco enemigo, has ganado {} puntos y {} monedas", puntos, monedas);
+                                }
+                            }
+                            Mensaje::BarcoHundido => {
+                                println!("Han golpeado un barco tuyo y se ha hundido");
+                            }
+                            Mensaje::BarcoGolpead(coordenadas) => {
+                                println!(
+                                    "Han golpeado un barco tuyo en las coordenadas {:?}",
+                                    coordenadas
+                                );
+                            }
+                            Mensaje::EventoSorpresaResultado(resultado) => {
+                                if resultado {
+                                    println!("Felicidades, fuiste el primero en reclamar el premio, ahora es tuyo");
+                                } else {
+                                    println!(
+                                        "Una lastima, alguien se te adelanto, perdiste el premio"
+                                    );
+                                }
+                            }
+                            Mensaje::Ranking(ranking) => {
+                                Self::mostrar_ranking(ranking)?;
+                            }
+                            Mensaje::Perdiste(puntos) => {
+                                println!("Has perdido con {} puntos", puntos);
+                                break;
+                            }
+                            Mensaje::NotificacionEliminacion(nombre) => {
+                                println!("El jugador {} ha sido eliminado", nombre);
+                                
+                            }
+                            Mensaje::CompraExitosa(tipo_barco, _) => match tipo_barco {
+                                1 => {
+                                    println!("Has comprado una fragata");
+                                }
+                                2 => {
+                                    println!("Has comprado un buque");
+                                }
+                                3 => {
+                                    println!("Has comprado un acorazado");
+                                }
+                                _ => {}
+                            },
+                           
+                            Mensaje::FinPartida(nombre, puntos) => {
+                                println!(
+                                    "Fin de la partida. El jugador {} ha ganado con {} puntos",
+                                    nombre, puntos
+                                );
+                                break;
+                            }
+                            _ => {
+                                Err(CustomError::ErrorRecibiendoMensaje)?;
+                            }
+                        },
                         Err(_) => {
                             return Err(CustomError::ErrorDeserealizandoMensaje);
                         }
@@ -236,7 +262,7 @@ impl Cliente {
     /// # Returns
     ///
     /// `usize` - Puntos ganados por el jugador
-    fn abrir_tienda(monedas: usize) -> Result<(Instruccion,usize), CustomError>{
+    fn abrir_tienda(monedas: usize) -> Result<(Instruccion, usize), CustomError> {
         let mut monedas_gastadas = 0;
         println!("Opciones para comprar: ");
         println!("(a) Acorazado de 3 casilleros: $300");
@@ -275,9 +301,9 @@ impl Cliente {
         }
         if !exitosa {
             println!("No cuenta con el dinero suficiente para comprar ese barco");
-            Ok((Instruccion::Saltar,0))
+            Ok((Instruccion::Saltar, 0))
         } else {
-            Ok((Instruccion::Compra(tipo_barco),monedas_gastadas))
+            Ok((Instruccion::Compra(tipo_barco), monedas_gastadas))
         }
     }
 
@@ -344,7 +370,10 @@ impl Cliente {
     /// # Returns
     ///
     /// `Instruccion` - Instrucción del jugador
-    fn pedir_instrucciones(barcos: Vec<(usize, Vec<(i32, i32)>)>, monedas: usize) ->Result<(Instruccion,usize), CustomError>{
+    fn pedir_instrucciones(
+        barcos: Vec<(usize, Vec<(i32, i32)>)>,
+        monedas: usize,
+    ) -> Result<(Instruccion, usize), CustomError> {
         let mut accion = String::new();
         io::stdin()
             .read_line(&mut accion)
@@ -375,7 +404,7 @@ impl Cliente {
     /// # Errors
     ///
     /// Retorna un error si no se puede obtener el barco
-    fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<(Instruccion,usize), CustomError> {
+    fn moverse(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<(Instruccion, usize), CustomError> {
         let (id, posicion) = Self::obtener_barco(barcos, MOV).unwrap();
         Ok((Instruccion::Movimiento(id, posicion), 0))
     }
@@ -392,17 +421,17 @@ impl Cliente {
     /// # Errors
     ///
     /// Retorna un error si no se puede obtener el barco
-    fn atacar(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<(Instruccion,usize), CustomError> {
+    fn atacar(barcos: Vec<(usize, Vec<(i32, i32)>)>) -> Result<(Instruccion, usize), CustomError> {
         let (id, posicion) = Self::obtener_barco(barcos, ATAQ).unwrap();
 
-        Ok((Instruccion::Ataque(id, posicion),0))
+        Ok((Instruccion::Ataque(id, posicion), 0))
     }
 
-    fn saltar () -> Result<(Instruccion,usize), CustomError> {
-        Ok((Instruccion::Saltar,0))
+    fn saltar() -> Result<(Instruccion, usize), CustomError> {
+        Ok((Instruccion::Saltar, 0))
     }
-    fn ranking () -> Result<(Instruccion,usize), CustomError> {
-        Ok((Instruccion::Ranking,0))
+    fn ranking() -> Result<(Instruccion, usize), CustomError> {
+        Ok((Instruccion::Ranking, 0))
     }
     /// Función que permite al jugador obtener un barco
     ///

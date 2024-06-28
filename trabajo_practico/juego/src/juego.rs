@@ -54,20 +54,29 @@ impl Juego {
     /// `CustomError` - Error personalizado
     pub fn iniciar_juego(&mut self, server: &mut Server) -> Result<(), CustomError> {
         let mut rondas = 0;
-
-        while let Ok(finalizado) = self.finalizo(server) {
+        let mut server_clone = server.clone();
+        
+        while let Ok(finalizado) = self.finalizo(&server_clone) {
             if finalizado {
                 break;
             }
 
             if rondas == EVENTO_SORPRESA {
-                server.crear_evento_sorpresa(&mut self.jugadores);
+                server_clone.crear_evento_sorpresa(&mut self.jugadores);
+            }
+
+            while self.jugadores[self.turno].barcos.is_empty() {
+                self.turno = (self.turno + 1) % self.jugadores.len();
             }
 
             println!(
-                "Turno del jugador {}", self.jugadores[self.turno].nombre_usuario);
+                "Turno del jugador {}",
+                self.jugadores[self.turno].nombre_usuario
+            );
+            println!("Cantidad de jugadores con barcos: {:?}", self.jugadores.iter().filter(|j| !j.barcos.is_empty()).count());
 
-            if let Some(conexion) = server
+            let mut server_clone = server_clone.clone();
+            if let Some(conexion) = server_clone
                 .conexiones_jugadores
                 .get(&self.jugadores[self.turno].id)
             {
@@ -76,26 +85,28 @@ impl Juego {
                 Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
             }
 
-            self.jugadores[self.turno].manejar_turno(server);
+            self.jugadores[self.turno].manejar_turno(&server_clone);
 
             loop {
-                match server.recibir_mensaje(self.jugadores[self.turno].id) {
+                match server_clone.recibir_mensaje(self.jugadores[self.turno].id) {
                     Ok(mensaje_serializado) => {
                         match serde_json::from_str::<Mensaje>(&mensaje_serializado) {
                             Ok(mensaje) => {
-                                if let Mensaje::Accion(instruccion,monedas) = mensaje {
-                                    if let Some(conexion) = server
+                                if let Mensaje::Accion(instruccion, monedas) = mensaje {
+                                    if let Some(conexion) = server_clone
                                         .conexiones_jugadores
                                         .get(&self.jugadores[self.turno].id)
                                     {
                                         let mut conexion = conexion.lock().unwrap();
-                                        match Self::manejar_instruccion(
+                                        let mut server_mut = server_clone.clone();
+                                        let mut self_clone = self.clone();
+                                        match self_clone.manejar_instruccion(
                                             instruccion,
                                             self.turno,
                                             &mut conexion,
                                             &mut self.jugadores,
-                                            server,
-                                            monedas
+                                            &mut server_mut,
+                                            monedas,
                                         ) {
                                             Ok(_) => break,
                                             Err(_) => {
@@ -118,16 +129,17 @@ impl Juego {
                 }
             }
 
-            self.jugadores[self.turno].enviar_instrucciones(server);
+            self.jugadores[self.turno].enviar_instrucciones(&server_clone);
             self.turno = (self.turno + 1) % self.jugadores.len();
             rondas += 1;
         }
 
-        match self.finalizo(server) {
+        match self.finalizo(&server_clone) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
     }
+
 
     fn mostrar_ranking(conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
         let file_path = "../archivos/ranking.json";
@@ -153,14 +165,14 @@ impl Juego {
     }
 
     fn manejar_instruccion(
+        &mut self,
         instruccion: Instruccion,
         jugador_actual: usize,
         conexion: &mut MutexGuard<'_, TcpStream>,
         jugadores: &mut [Jugador],
-        server: &Server,
+        server: &mut Server,
         monedas: usize,
     ) -> Result<(), CustomError> {
-        
         match instruccion {
             Instruccion::Movimiento(barco_id, cordenadas) => {
                 Self::procesar_movimiento(
@@ -173,6 +185,7 @@ impl Juego {
                 //Self::procesar_movimiento(movimiento, &mut self.jugadores);
             }
             Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
+                let  pierde = 
                 Self::procesar_ataque(
                     coordenadas_ataque,
                     jugador_actual,
@@ -180,25 +193,33 @@ impl Juego {
                     server,
                     conexion,
                 );
+                if pierde {
+                    self.eliminar_jugador(jugadores[jugador_actual].id);
+                    server.conexiones_jugadores.remove(&jugadores[jugador_actual].id);
+                }
             }
+            
             Instruccion::Saltar => {
                 println!("Jugador salta su turno.");
             }
             Instruccion::Compra(barco_elegido) => {
                 Self::abrir_tienda(jugadores, jugador_actual, barco_elegido);
                 jugadores[jugador_actual].monedas -= monedas;
-                let mensaje = Mensaje::CompraExitosa(jugadores[jugador_actual].monedas, barco_elegido);
+                let mensaje =
+                    Mensaje::CompraExitosa(jugadores[jugador_actual].monedas, barco_elegido);
                 let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
                 Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
-                //mensaje para el resto sobre la compra
-                let mensaje = Mensaje::NotificacionCompra(jugadores[jugador_actual].nombre_usuario.clone(), barco_elegido);
-                let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
-
-                for (id, conexion) in &server.conexiones_jugadores {
-                    if *id != jugador_actual {
-                        let mut conexion = conexion.lock().unwrap();
-                        Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
+                match barco_elegido {
+                    0 => {
+                        println!("El jugador {} ha comprado una fragata", jugadores[jugador_actual].nombre_usuario);
                     }
+                    1 => {
+                        println!("El jugador {} ha comprado un buque", jugadores[jugador_actual].nombre_usuario);
+                    }
+                    2 => {
+                        println!("El jugador {} ha comprado un acorazado", jugadores[jugador_actual].nombre_usuario);
+                    }
+                    _ => {}
                 }
             }
             Instruccion::Ranking => {
@@ -206,7 +227,6 @@ impl Juego {
                     return Err(CustomError::ErrorMostrandoRanking);
                 }
             }
-            
         }
         Ok(())
     }
@@ -274,9 +294,27 @@ impl Juego {
             .push(Jugador::new(id_jugador, nombre, &mut self.mapa));
     }
 
+    pub fn eliminar_jugador(&mut self, id_jugador: usize) {
+        self.jugadores.retain(|j| j.id != id_jugador);
+    }
+    /// Función que abre la tienda para un jugador
+    /// 
+    /// # Args
+    /// 
+    /// `jugadores` - Vector de jugadores
+    /// 
+    /// `jugador_actual` - Jugador que abre la tienda
+    /// 
+    /// `barco` - Barco a comprar
+    /// 
+    /// # Returns
+    /// 
+    /// `()` - No retorna nada
     fn abrir_tienda(jugadores: &mut [Jugador], jugador_actual: usize, barco: usize) {
         jugadores[jugador_actual].agregar_barco(barco);
     }
+
+    
 
     /// Función que procesa un movimiento en el mapa
     ///
@@ -350,27 +388,51 @@ impl Juego {
         coordenadas_ataque: (i32, i32),
         jugador_actual: usize,
         jugadores: &mut [Jugador],
-        server: &Server,
+        server: &mut Server,
         conexion: &mut MutexGuard<'_, TcpStream>,
-    ) {
+    ) -> bool {
+        let mut pierde = false;
         let mut puntos_ganados = 0;
         let mut monedas_ganadas = 0;
+
         for jugador in jugadores.iter_mut() {
             if jugador.id != jugador_actual {
                 let (puntos, monedas) = jugador.procesar_ataque(coordenadas_ataque, server);
+                if jugador.barcos.len() == 0 {
+                    let mensaje = Mensaje::Perdiste(jugador.puntos);
+                    let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
+                    for (id, conexion) in &server.conexiones_jugadores {
+                        if *id == jugador.id {
+                            let mut conexion = conexion.lock().unwrap();
+                            let _ = Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec());
+                        }
+                    }
+                    println!("El jugador {} ha sido eliminado", jugador.nombre_usuario);
+                    pierde = true;
+                    server.conexiones_jugadores.remove(&jugador.id);
+                    
+                }
                 puntos_ganados += puntos;
                 monedas_ganadas += monedas;
                 if puntos > 0 {
                     jugador.mapa.marcar_hundido(coordenadas_ataque);
                 }
             }
+            if server.conexiones_jugadores.len() == 1 {
+                println!("El juego ha terminado");
+                break;
+            }
         }
+
         let mensaje = Mensaje::MensajeInfoAaque(puntos_ganados, monedas_ganadas);
         let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
         Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
         jugadores[jugador_actual].puntos += puntos_ganados;
         jugadores[jugador_actual].monedas += monedas_ganadas;
+
+        pierde
     }
+
     /// Función que envía un mensaje a un cliente
     ///
     /// # Args

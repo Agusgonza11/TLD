@@ -27,7 +27,7 @@ impl Mapa {
     /// `Mapa` - Mapa creado
     pub fn new() -> Mapa {
         let tablero = Array2::from_elem((10, 10), '.');
-        Mapa { tablero}
+        Mapa { tablero }
     }
     /// Función que establece un valor en una posición del tablero
     ///
@@ -187,10 +187,6 @@ impl Mapa {
         }
 
         for &(x_destino, y_destino) in coordenadas_destino.iter() {
-            println!(
-                "Actualizando posición destino: ({}, {})",
-                x_destino, y_destino
-            ); // Depuración
             if x_destino >= 0
                 && x_destino < self.tablero.ncols() as i32
                 && y_destino >= 0

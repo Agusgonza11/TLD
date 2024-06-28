@@ -209,7 +209,7 @@ impl Server {
     ///
     /// `Result<(), CustomError>` - Ok si se puede comenzar el juego o Error si no se puede
     pub fn preguntar_comienzo_juego(&self) -> Result<(), CustomError> {
-        if self.conexiones_jugadores.len() < 2 {
+        if self.conexiones_jugadores.len() < 3 {
             println!("Esperando más jugadores para comenzar el juego...");
             self.esperar_jugadores();
             Ok(())
@@ -234,6 +234,16 @@ impl Server {
                 respuestas.insert(*player_id, respuesta);
             }
             if respuestas.values().all(|respuesta| respuesta == "si") {
+                for connection in self.conexiones_jugadores.values() {
+                    let mut connection = connection.lock().unwrap();
+                    let mensaje_serializado =
+                        serde_json::to_string(&Mensaje::ComenzoJuego).unwrap();
+                    Server::enviar_mensaje(
+                        &mut connection,
+                        mensaje_serializado.as_bytes().to_vec(),
+                    )
+                    .map_err(|_| CustomError::ErrorEnviarMensaje)?;
+                }
                 println!("Todos los jugadores quieren comenzar el juego.");
                 println!("Comenzando el juego...");
                 let _ = self.comenzar_juego();
@@ -285,9 +295,9 @@ impl Server {
             Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec())
                 .unwrap();
         }
-    
+
         let mut primero = None;
-    
+
         for (player_id, connection) in &self.conexiones_jugadores {
             let mut connection = connection.lock().unwrap();
             let mut buffer = [0; 512];
@@ -295,7 +305,7 @@ impl Server {
             let respuesta = String::from_utf8_lossy(&buffer[..bytes_read])
                 .trim()
                 .to_string();
-    
+
             if respuesta == "primero" && primero.is_none() {
                 primero = Some(*player_id);
                 jugadores[*player_id].monedas += PREMIO;
@@ -310,7 +320,7 @@ impl Server {
                     .unwrap();
             }
         }
-    
+
         if let Some(p) = primero {
             let posiciones = CORDENADAS_BOMBA;
             for posicion in posiciones {
@@ -321,9 +331,8 @@ impl Server {
                     .unwrap()
                     .lock()
                     .unwrap();
-                Juego::procesar_ataque(*posicion, p, jugadores, &self_clone, &mut conexion);
+                Juego::procesar_ataque(*posicion, p, jugadores, self, &mut conexion);
             }
         }
     }
-    
 }
