@@ -260,9 +260,9 @@ impl Juego {
                     jugador.puntos,
                 ));
                 if let Ok(mensaje) = mensaje_serializado {
-                    for (_, conexion) in &server.conexiones_jugadores {
-                        let mut conexion = conexion.lock().unwrap();
-                        Self::enviar_mensaje(&mut conexion, mensaje.as_bytes().to_vec())?;
+                    for conexion in server.conexiones_jugadores.values() {
+                        let conexion = conexion.lock().unwrap();
+                        Self::enviar_mensaje(&conexion, mensaje.as_bytes().to_vec())?;
                     }
                 }
 
@@ -342,7 +342,7 @@ impl Juego {
                 jugadores[jugador_actual]
                     .mapa
                     .serializar_barcos(&jugadores[jugador_actual].barcos),
-                jugadores[jugador_actual].monedas.clone(),
+                jugadores[jugador_actual].monedas,
             ))
             .unwrap();
             Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec())?;
@@ -358,7 +358,7 @@ impl Juego {
                 jugadores[jugador_actual]
                     .mapa
                     .serializar_barcos(&jugadores[jugador_actual].barcos),
-                jugadores[jugador_actual].monedas.clone(),
+                jugadores[jugador_actual].monedas,
             ))
             .unwrap();
             Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec())?;
@@ -398,13 +398,13 @@ impl Juego {
         for jugador in jugadores.iter_mut() {
             if jugador.id != jugador_actual {
                 let (puntos, monedas) = jugador.procesar_ataque(coordenadas_ataque, server);
-                if jugador.barcos.len() == 0 {
+                if jugador.barcos.is_empty(){
                     let mensaje = Mensaje::Perdiste(jugador.puntos);
                     let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
                     for (id, conexion) in &server.conexiones_jugadores {
                         if *id == jugador.id {
-                            let mut conexion = conexion.lock().unwrap();
-                            let _ = Self::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec());
+                            let conexion = conexion.lock().unwrap();
+                            let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
                         }
                     }
                     println!("El jugador {} ha sido eliminado", jugador.nombre_usuario);
@@ -426,7 +426,7 @@ impl Juego {
 
         let mensaje = Mensaje::MensajeInfoAaque(puntos_ganados, monedas_ganadas);
         let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
-        Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
+        Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
         jugadores[jugador_actual].puntos += puntos_ganados;
         jugadores[jugador_actual].monedas += monedas_ganadas;
 

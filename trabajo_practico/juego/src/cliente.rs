@@ -492,12 +492,12 @@ impl Cliente {
     fn pedir_coordenadas() -> Result<(i32, i32), CustomError> {
         loop {
             println!("Ingresa las coordenadas en formato 'x,y': ");
-
+    
             let mut coordenadas = String::new();
             io::stdin()
                 .read_line(&mut coordenadas)
                 .expect("Error al leer la entrada");
-
+    
             let mut iter = coordenadas.trim().split(',');
             if let (Some(x_str), Some(y_str)) = (iter.next(), iter.next()) {
                 if let Ok(x) = x_str.trim().parse::<i32>() {
@@ -506,8 +506,9 @@ impl Cliente {
                     }
                 }
             }
-
-            return Err(CustomError::ErrorCoordenadasIncorrectas);
+    
+            println!("Error: Coordenadas incorrectas. Por favor, intenta de nuevo.");
         }
     }
+    
 }

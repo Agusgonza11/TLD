@@ -31,7 +31,7 @@ impl Jugador {
         let mut id_actual = 0;
 
         let tamaños_barcos: Vec<usize> = vec![1];
-        for tamaño in tamaños_barcos {
+        for tamaño in tamaños_barcos.into_iter(){
             let vec_posiciones = mapa.obtener_posiciones_libres_contiguas(id.to_string(), tamaño);
             let id_barco = id_actual;
             id_actual += 1;
@@ -76,14 +76,14 @@ impl Jugador {
     ///
     ///
     pub fn manejar_turno(&mut self, server: &Server) {
-        if self.barcos.len() == 0 {
+        if self.barcos.is_empty(){
             return;
         }
         let _ = self.mapa.enviar_tablero(
             self.id.to_string(),
             server,
             &self.barcos,
-            self.monedas.clone(),
+            self.monedas,
         );
     }
     /// Función que permite al jugador agregar un barco al tablero
@@ -171,12 +171,12 @@ impl Jugador {
         for barco in &mut self.barcos {
             if barco.posiciones.contains(&coordenadas_ataque) {
                 barco.posiciones.retain(|&pos| pos != coordenadas_ataque);
-
+    
                 if barco.posiciones.is_empty() {
                     barco.estado = EstadoBarco::Hundido;
                     puntos += 15;
                     monedas += 100;
-
+    
                     let conexion = server
                         .conexiones_jugadores
                         .get(&self.id)
@@ -188,52 +188,51 @@ impl Jugador {
                     let _ =
                         Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
                     barcos_hundidos.push(coordenadas_ataque);
-                } else {
-                    if barco.estado == EstadoBarco::Sano {
-                        barco.estado = EstadoBarco::Golpeado;
-                        let conexion = server
-                            .conexiones_jugadores
-                            .get(&self.id)
-                            .unwrap()
-                            .lock()
-                            .unwrap();
-                        let mensaje_serializado =
-                            serde_json::to_string(&Mensaje::BarcoGolpead(coordenadas_ataque));
-                        let _ = Self::enviar_mensaje(
-                            &conexion,
-                            mensaje_serializado.unwrap().as_bytes().to_vec(),
-                        );
-                        puntos += 5;
-                        monedas += 50;
-                    } else if barco.estado == EstadoBarco::Golpeado {
-                        let conexion = server
-                            .conexiones_jugadores
-                            .get(&self.id)
-                            .unwrap()
-                            .lock()
-                            .unwrap();
-                        let mensaje_serializado =
-                            serde_json::to_string(&Mensaje::BarcoGolpead(coordenadas_ataque));
-                        let _ = Self::enviar_mensaje(
-                            &conexion,
-                            mensaje_serializado.unwrap().as_bytes().to_vec(),
-                        );
-                        puntos += 5;
-                        monedas += 50;
-                    }
+                } else if barco.estado == EstadoBarco::Sano {
+                    barco.estado = EstadoBarco::Golpeado;
+                    let conexion = server
+                        .conexiones_jugadores
+                        .get(&self.id)
+                        .unwrap()
+                        .lock()
+                        .unwrap();
+                    let mensaje_serializado =
+                        serde_json::to_string(&Mensaje::BarcoGolpead(coordenadas_ataque));
+                    let _ = Self::enviar_mensaje(
+                        &conexion,
+                        mensaje_serializado.unwrap().as_bytes().to_vec(),
+                    );
+                    puntos += 5;
+                    monedas += 50;
+                } else if barco.estado == EstadoBarco::Golpeado {
+                    let conexion = server
+                        .conexiones_jugadores
+                        .get(&self.id)
+                        .unwrap()
+                        .lock()
+                        .unwrap();
+                    let mensaje_serializado =
+                        serde_json::to_string(&Mensaje::BarcoGolpead(coordenadas_ataque));
+                    let _ = Self::enviar_mensaje(
+                        &conexion,
+                        mensaje_serializado.unwrap().as_bytes().to_vec(),
+                    );
+                    puntos += 5;
+                    monedas += 50;
                 }
             }
         }
-
+    
         self.barcos
             .retain(|barco| barco.estado != EstadoBarco::Hundido);
-
+    
         for coordenadas in barcos_hundidos {
             self.mapa.marcar_hundido(coordenadas);
         }
-
+    
         (puntos, monedas)
     }
+    
     /// Función que envía un mensaje al servidor
     ///
     /// # Args
