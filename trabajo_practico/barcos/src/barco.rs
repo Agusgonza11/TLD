@@ -52,3 +52,30 @@ impl Barco {
         self.posiciones = nueva_posicion;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        let barco = Barco::new(1, 2, vec![(1, 1), (1, 2)]);
+        assert_eq!(barco.id, 1);
+        assert_eq!(barco.tamaño, 2);
+        assert_eq!(barco.posiciones, vec![(1, 1), (1, 2)]);
+        assert_eq!(barco.estado, EstadoBarco::Sano);
+    }
+
+    #[test]
+    fn test_obtener_datos() {
+        let barco = Barco::new(1, 2, vec![(1, 1), (1, 2)]);
+        assert_eq!(barco.obtener_datos(), (1, vec![(1, 1), (1, 2)]));
+    }
+
+    #[test]
+    fn test_actualizar_posicion() {
+        let mut barco = Barco::new(1, 2, vec![(1, 1), (1, 2)]);
+        barco.actualizar_posicion(vec![(2, 2), (2, 3)]);
+        assert_eq!(barco.posiciones, vec![(2, 2), (2, 3)]);
+    }
+}

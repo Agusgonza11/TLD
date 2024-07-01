@@ -448,8 +448,9 @@ impl Juego {
                 }
             }
             if server.conexiones_jugadores.len() == 1 {
-                println!("El juego ha terminado");
-                break;
+                println!("Juego terminado. Ganador: {}", jugador.nombre_usuario);
+                pierde = false;
+                return pierde;
             }
         }
 
