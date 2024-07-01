@@ -30,6 +30,5 @@ cargo run --bin jugador
 
 ## Miembros del grupo
 - Agustin Gonzalez
-- Lucas Correa
 - Matias Morales
 

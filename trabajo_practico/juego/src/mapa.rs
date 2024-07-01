@@ -1,6 +1,6 @@
 use std::{io::Write, net::TcpStream};
 
-use barcos::{barco::Barco, flota::Flota};
+use barcos::barco::Barco;
 use libreria::custom_error::CustomError;
 use ndarray::Array2;
 use rand::Rng;
@@ -12,7 +12,6 @@ use crate::{mensaje::Mensaje, server::Server};
 /// Estructura que representa el mapa del juego
 pub struct Mapa {
     pub tablero: Array2<char>,
-    pub flotas: Vec<Flota>,
 }
 impl Default for Mapa {
     fn default() -> Self {
@@ -28,8 +27,7 @@ impl Mapa {
     /// `Mapa` - Mapa creado
     pub fn new() -> Mapa {
         let tablero = Array2::from_elem((10, 10), '.');
-        let flotas = Vec::new();
-        Mapa { tablero, flotas }
+        Mapa { tablero }
     }
     /// Función que establece un valor en una posición del tablero
     ///
@@ -107,7 +105,7 @@ impl Mapa {
         id: String,
         server: &Server,
         barcos: &[Barco],
-        monedas: usize
+        monedas: usize,
     ) -> Result<(), CustomError> {
         let jugador: char = id
             .chars()
@@ -131,12 +129,12 @@ impl Mapa {
             .conexiones_jugadores
             .get(&id.parse().unwrap_or_default())
         {
-
             let conexion = conexion
                 .lock()
                 .map_err(|_| CustomError::ErrorAceptandoConexion)?;
             let mensaje_serializado =
-                serde_json::to_string(&Mensaje::Tablero(tablero_vec, barcos_serializados, monedas)).unwrap();
+                serde_json::to_string(&Mensaje::Tablero(tablero_vec, barcos_serializados, monedas))
+                    .unwrap();
             Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
         }
 
@@ -165,24 +163,43 @@ impl Mapa {
     /// # Returns
     ///
     /// `()` - No retorna nada
-    pub fn actualizar_posicion_barco(&mut self, barco: &mut Barco, coordenadas_destino: Vec<(i32, i32)>, id: usize) -> bool {
+    pub fn actualizar_posicion_barco(
+        &mut self,
+        barco: &mut Barco,
+        coordenadas_destino: Vec<(i32, i32)>,
+        id: usize,
+    ) -> bool {
         let mut modifico = false;
         let coordenadas_origen = barco.posiciones.clone();
         for &(x_origen, y_origen) in coordenadas_origen.iter() {
-            if x_origen >= 0 && x_origen < self.tablero.ncols() as i32 && y_origen >= 0 && y_origen < self.tablero.nrows() as i32 {
+            if x_origen >= 0
+                && x_origen < self.tablero.ncols() as i32
+                && y_origen >= 0
+                && y_origen < self.tablero.nrows() as i32
+            {
                 self.tablero[[y_origen as usize, x_origen as usize]] = '.';
             } else {
-                println!("Coordenada origen fuera de limites: ({}, {})", x_origen, y_origen); 
+                println!(
+                    "Coordenada origen fuera de limites: ({}, {})",
+                    x_origen, y_origen
+                );
             }
         }
-    
+
         for &(x_destino, y_destino) in coordenadas_destino.iter() {
-            println!("Actualizando posición destino: ({}, {})", x_destino, y_destino); // Depuración
-            if x_destino >= 0 && x_destino < self.tablero.ncols() as i32 && y_destino >= 0 && y_destino < self.tablero.nrows() as i32 {
+            if x_destino >= 0
+                && x_destino < self.tablero.ncols() as i32
+                && y_destino >= 0
+                && y_destino < self.tablero.nrows() as i32
+            {
                 modifico = true;
-                self.tablero[[y_destino as usize, x_destino as usize]] = id.to_string().chars().next().unwrap(); 
+                self.tablero[[y_destino as usize, x_destino as usize]] =
+                    id.to_string().chars().next().unwrap();
             } else {
-                println!("Coordenada destino fuera de limites: ({}, {})", x_destino, y_destino); 
+                println!(
+                    "Coordenada destino fuera de limites: ({}, {})",
+                    x_destino, y_destino
+                );
             }
         }
         modifico
@@ -317,4 +334,43 @@ impl Mapa {
         result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+    #[test]
+    fn test_mapa_new(){
+        let mapa = Mapa::new();
+        assert_eq!(mapa.tablero.nrows(), 10);
+        assert_eq!(mapa.tablero.ncols(), 10);
+    }
+
+    #[test]
+    fn test_mapa_set(){
+        let mut mapa = Mapa::new();
+        mapa.set(0, 0, 'a');
+        assert_eq!(mapa.tablero[[0, 0]], 'a');
+    }
+
+    #[test]
+    fn test_mapa_obtener_posicion_libre(){
+        let mut mapa = Mapa::new();
+        let (x, y) = mapa.obtener_posicion_libre("a".to_string());
+        assert_eq!(mapa.tablero[[y as usize, x as usize]], '.');
+    }
+
+    #[test]
+    fn test_mapa_imprimir_tablero(){
+        let mut mapa = Mapa::new();
+        mapa.set(0, 0, 'a');
+        let  output = Vec::new();
+        let _ = std::io::stdout().write_all(&output);
+        mapa.imprimir_tablero("a".to_string());
+        let output = String::from_utf8(output).unwrap();
+        assert_eq!(output, "");
+    }
+
+
+
 }
