@@ -11,17 +11,17 @@ pub struct Barco {
 
 impl Barco {
     /// Función que crea un nuevo barco
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `id` - Identificador del barco
-    /// 
+    ///
     /// `tamaño` - Tamaño del barco
-    /// 
+    ///
     /// `posiciones` - Posiciones del barco
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `Barco` - Barco creado
     pub fn new(id: usize, tamaño: usize, posiciones: Vec<(i32, i32)>) -> Barco {
         Barco {

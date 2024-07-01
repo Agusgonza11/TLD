@@ -335,3 +335,42 @@ impl Mapa {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+    #[test]
+    fn test_mapa_new(){
+        let mapa = Mapa::new();
+        assert_eq!(mapa.tablero.nrows(), 10);
+        assert_eq!(mapa.tablero.ncols(), 10);
+    }
+
+    #[test]
+    fn test_mapa_set(){
+        let mut mapa = Mapa::new();
+        mapa.set(0, 0, 'a');
+        assert_eq!(mapa.tablero[[0, 0]], 'a');
+    }
+
+    #[test]
+    fn test_mapa_obtener_posicion_libre(){
+        let mut mapa = Mapa::new();
+        let (x, y) = mapa.obtener_posicion_libre("a".to_string());
+        assert_eq!(mapa.tablero[[y as usize, x as usize]], '.');
+    }
+
+    #[test]
+    fn test_mapa_imprimir_tablero(){
+        let mut mapa = Mapa::new();
+        mapa.set(0, 0, 'a');
+        let  output = Vec::new();
+        let _ = std::io::stdout().write_all(&output);
+        mapa.imprimir_tablero("a".to_string());
+        let output = String::from_utf8(output).unwrap();
+        assert_eq!(output, "");
+    }
+
+
+
+}

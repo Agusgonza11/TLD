@@ -129,13 +129,25 @@ impl Cliente {
                             }
 
                             Mensaje::EventoSorpresa => {
-                                println!("Un cargamento con recursos aparecio de repente! se el primero en reclamarlo ingresando: primero");
+                                //esperar 1 segundo
+                                std::thread::sleep(std::time::Duration::from_secs(1));
+                                println!("¡Un cargamento con recursos apareció de repente! Sé el primero en reclamarlo ingresando: primero");
+
+                                // Leer la respuesta del usuario
                                 let mut respuesta = String::new();
                                 io::stdin()
                                     .read_line(&mut respuesta)
                                     .expect("Error al leer la respuesta.");
-                                self.enviar_respuesta(respuesta.trim())?;
+
+                                // Trim de la respuesta para eliminar espacios adicionales
+                                let respuesta_trim = respuesta.trim();
+
+                                // Enviar la respuesta al servidor
+                                if let Err(e) = self.enviar_respuesta(respuesta_trim) {
+                                    eprintln!("Error al enviar la respuesta: {}", e);
+                                }
                             }
+
                             Mensaje::MensajeInfoAaque(puntos, monedas) => {
                                 if puntos == 0 {
                                     println!(
@@ -172,7 +184,6 @@ impl Cliente {
                             }
                             Mensaje::NotificacionEliminacion(nombre) => {
                                 println!("El jugador {} ha sido eliminado", nombre);
-                                
                             }
                             Mensaje::CompraExitosa(tipo_barco, _) => match tipo_barco {
                                 1 => {
@@ -186,7 +197,7 @@ impl Cliente {
                                 }
                                 _ => {}
                             },
-                           
+
                             Mensaje::FinPartida(nombre, puntos) => {
                                 println!(
                                     "Fin de la partida. El jugador {} ha ganado con {} puntos",
@@ -492,12 +503,12 @@ impl Cliente {
     fn pedir_coordenadas() -> Result<(i32, i32), CustomError> {
         loop {
             println!("Ingresa las coordenadas en formato 'x,y': ");
-    
+
             let mut coordenadas = String::new();
             io::stdin()
                 .read_line(&mut coordenadas)
                 .expect("Error al leer la entrada");
-    
+
             let mut iter = coordenadas.trim().split(',');
             if let (Some(x_str), Some(y_str)) = (iter.next(), iter.next()) {
                 if let Ok(x) = x_str.trim().parse::<i32>() {
@@ -506,9 +517,8 @@ impl Cliente {
                     }
                 }
             }
-    
+
             println!("Error: Coordenadas incorrectas. Por favor, intenta de nuevo.");
         }
     }
-    
 }

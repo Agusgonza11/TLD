@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufReader, BufWriter};
+use std::sync::Once;
 use std::{io::Write, net::TcpStream, sync::MutexGuard};
 
 use crate::juego::CustomError::AccionInvalida;
@@ -55,14 +56,14 @@ impl Juego {
     pub fn iniciar_juego(&mut self, server: &mut Server) -> Result<(), CustomError> {
         let mut rondas = 0;
         let mut server_clone = server.clone();
-        
+
         while let Ok(finalizado) = self.finalizo(&server_clone) {
             if finalizado {
                 break;
             }
 
             if rondas == EVENTO_SORPRESA {
-                server_clone.crear_evento_sorpresa(&mut self.jugadores);
+                let _ = server_clone.crear_evento_sorpresa(&mut self.jugadores);
             }
 
             while self.jugadores[self.turno].barcos.is_empty() {
@@ -73,7 +74,13 @@ impl Juego {
                 "Turno del jugador {}",
                 self.jugadores[self.turno].nombre_usuario
             );
-            println!("Cantidad de jugadores con barcos: {:?}", self.jugadores.iter().filter(|j| !j.barcos.is_empty()).count());
+            println!(
+                "Cantidad de jugadores con barcos: {:?}",
+                self.jugadores
+                    .iter()
+                    .filter(|j| !j.barcos.is_empty())
+                    .count()
+            );
 
             let mut server_clone = server_clone.clone();
             if let Some(conexion) = server_clone
@@ -140,7 +147,6 @@ impl Juego {
         }
     }
 
-
     fn mostrar_ranking(conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
         let file_path = "../archivos/ranking.json";
         let file = File::open(file_path).map_err(|_| CustomError::ErrorMostrandoRanking)?;
@@ -185,8 +191,7 @@ impl Juego {
                 //Self::procesar_movimiento(movimiento, &mut self.jugadores);
             }
             Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
-                let  pierde = 
-                Self::procesar_ataque(
+                let pierde = Self::procesar_ataque(
                     coordenadas_ataque,
                     jugador_actual,
                     jugadores,
@@ -195,10 +200,12 @@ impl Juego {
                 );
                 if pierde {
                     self.eliminar_jugador(jugadores[jugador_actual].id);
-                    server.conexiones_jugadores.remove(&jugadores[jugador_actual].id);
+                    server
+                        .conexiones_jugadores
+                        .remove(&jugadores[jugador_actual].id);
                 }
             }
-            
+
             Instruccion::Saltar => {
                 println!("Jugador salta su turno.");
             }
@@ -211,13 +218,22 @@ impl Juego {
                 Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
                 match barco_elegido {
                     0 => {
-                        println!("El jugador {} ha comprado una fragata", jugadores[jugador_actual].nombre_usuario);
+                        println!(
+                            "El jugador {} ha comprado una fragata",
+                            jugadores[jugador_actual].nombre_usuario
+                        );
                     }
                     1 => {
-                        println!("El jugador {} ha comprado un buque", jugadores[jugador_actual].nombre_usuario);
+                        println!(
+                            "El jugador {} ha comprado un buque",
+                            jugadores[jugador_actual].nombre_usuario
+                        );
                     }
                     2 => {
-                        println!("El jugador {} ha comprado un acorazado", jugadores[jugador_actual].nombre_usuario);
+                        println!(
+                            "El jugador {} ha comprado un acorazado",
+                            jugadores[jugador_actual].nombre_usuario
+                        );
                     }
                     _ => {}
                 }
@@ -241,42 +257,45 @@ impl Juego {
     ///
     /// `Result<bool, CustomError>` - Result con booleano que indica si el juego finalizó o error
     fn finalizo(&self, server: &Server) -> Result<bool, CustomError> {
-        static ONCE_FLAG: std::sync::Once = std::sync::Once::new();
-
+        static ONCE_FLAG: Once = Once::new();
+    
         let jugadores_con_barcos = self
             .jugadores
             .iter()
             .filter(|j| !j.barcos.is_empty())
             .count();
-
+    
         if jugadores_con_barcos <= 1 {
             if let Some(jugador) = self.jugadores.iter().find(|j| !j.barcos.is_empty()) {
+                // Actualizar ranking
                 self.actualizar_ranking()
                     .map_err(|_| CustomError::ErrorMostrandoRanking)?;
-
+    
                 let ganador = &jugador.nombre_usuario;
                 let mensaje_serializado = serde_json::to_string(&Mensaje::FinPartida(
                     jugador.nombre_usuario.clone(),
                     jugador.puntos,
-                ));
-                if let Ok(mensaje) = mensaje_serializado {
-                    for conexion in server.conexiones_jugadores.values() {
-                        let conexion = conexion.lock().unwrap();
-                        Self::enviar_mensaje(&conexion, mensaje.as_bytes().to_vec())?;
-                    }
+                )).unwrap();
+    
+                // Enviar mensaje a todos los jugadores conectados
+                for conexion in server.conexiones_jugadores.values() {
+                    let mut conexion = conexion.lock().unwrap();
+                    Server::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec())?;
                 }
-
+    
+                // Imprimir mensaje del ganador solo una vez
                 ONCE_FLAG.call_once(|| {
                     println!("El jugador {} ha ganado", ganador);
                 });
             } else {
+                // Imprimir mensaje de que no hay ganadores solo una vez
                 ONCE_FLAG.call_once(|| {
                     println!("No hay ganadores.");
                 });
             }
             return Ok(true);
         }
-
+    
         Ok(false)
     }
 
@@ -293,28 +312,36 @@ impl Juego {
         self.jugadores
             .push(Jugador::new(id_jugador, nombre, &mut self.mapa));
     }
-
-    pub fn eliminar_jugador(&mut self, id_jugador: usize) {
-        self.jugadores.retain(|j| j.id != id_jugador);
-    }
-    /// Función que abre la tienda para un jugador
+    /// Función que elimina un jugador del juego
     /// 
     /// # Args
     /// 
     /// `jugadores` - Vector de jugadores
     /// 
-    /// `jugador_actual` - Jugador que abre la tienda
-    /// 
-    /// `barco` - Barco a comprar
+    /// `id_jugador` - ID del jugador a eliminar
     /// 
     /// # Returns
     /// 
     /// `()` - No retorna nada
+    pub fn eliminar_jugador(&mut self, id_jugador: usize) {
+        self.jugadores.retain(|j| j.id != id_jugador);
+    }
+    /// Función que abre la tienda para un jugador
+    ///
+    /// # Args
+    ///
+    /// `jugadores` - Vector de jugadores
+    ///
+    /// `jugador_actual` - Jugador que abre la tienda
+    ///
+    /// `barco` - Barco a comprar
+    ///
+    /// # Returns
+    ///
+    /// `()` - No retorna nada
     fn abrir_tienda(jugadores: &mut [Jugador], jugador_actual: usize, barco: usize) {
         jugadores[jugador_actual].agregar_barco(barco);
     }
-
-    
 
     /// Función que procesa un movimiento en el mapa
     ///
@@ -398,19 +425,21 @@ impl Juego {
         for jugador in jugadores.iter_mut() {
             if jugador.id != jugador_actual {
                 let (puntos, monedas) = jugador.procesar_ataque(coordenadas_ataque, server);
-                if jugador.barcos.is_empty(){
+                if jugador.barcos.is_empty() {
                     let mensaje = Mensaje::Perdiste(jugador.puntos);
                     let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
                     for (id, conexion) in &server.conexiones_jugadores {
                         if *id == jugador.id {
                             let conexion = conexion.lock().unwrap();
-                            let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
+                            let _ = Self::enviar_mensaje(
+                                &conexion,
+                                mensaje_serializado.as_bytes().to_vec(),
+                            );
                         }
                     }
                     println!("El jugador {} ha sido eliminado", jugador.nombre_usuario);
                     pierde = true;
                     server.conexiones_jugadores.remove(&jugador.id);
-                    
                 }
                 puntos_ganados += puntos;
                 monedas_ganadas += monedas;
@@ -456,52 +485,72 @@ impl Juego {
         Ok(())
     }
 
-    /// Función que actualiza el ranking de los jugadores
-    ///
-    /// # Returns
-    ///
-    /// `Result<(), CustomError>` - Resultado de la ejecución
-    ///
-    /// # Errors
-    ///
-    /// `CustomError` - Error personalizado
     pub fn actualizar_ranking(&self) -> Result<(), CustomError> {
-        let dir_archivo: &str = "../archivos";
-        let nombre_archivo = format!("{}/ranking.json", dir_archivo);
+        let nombre_archivo = "../archivos/ranking.json";
 
-        fs::create_dir_all(dir_archivo).map_err(|_| CustomError::ErrorMostrandoRanking)?;
+        fs::create_dir_all("../archivos").map_err(|_| CustomError::ErrorMostrandoRanking)?;
 
-        let mut rankings: HashMap<String, usize> = HashMap::new();
-        if let Ok(archivo) = File::open(&nombre_archivo) {
+        let mut rankings: HashMap<String, usize> = if let Ok(archivo) = File::open(nombre_archivo) {
             let reader = BufReader::new(archivo);
-            let ranking: HashMap<String, usize> =
-                serde_json::from_reader(reader).unwrap_or_default();
-            rankings.extend(ranking);
-        }
+            serde_json::from_reader(reader).unwrap_or_default()
+        } else {
+            HashMap::new()
+        };
 
         for jugador in &self.jugadores {
-            let entry = rankings.entry(jugador.nombre_usuario.clone()).or_insert(0);
-            *entry += jugador.puntos;
+            *rankings.entry(jugador.nombre_usuario.clone()).or_insert(0) += jugador.puntos;
         }
-
-        let mut ranking_ordenado: Vec<_> = rankings.iter().collect();
-        ranking_ordenado.sort_by_key(|&(_, puntos)| std::cmp::Reverse(*puntos));
-
-        let ranking_final: HashMap<_, _> = ranking_ordenado
-            .into_iter()
-            .map(|(k, v)| (k.clone(), *v))
-            .collect();
-
         let file = OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
             .open(nombre_archivo)
             .map_err(|_| CustomError::ErrorMostrandoRanking)?;
-        let writer = BufWriter::new(file);
-        serde_json::to_writer(writer, &ranking_final)
-            .map_err(|_| CustomError::ErrorSerializacion)?;
 
+        let writer = BufWriter::new(file);
+
+        serde_json::to_writer(writer, &rankings).map_err(|_| CustomError::ErrorSerializacion)?;
         Ok(())
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_nuevo_juego() {
+        let juego = Juego::new(2);
+        assert_eq!(juego.jugadores.len(), 2);
+    }
+
+    #[test]
+    fn test_agregar_jugador() {
+        let mut juego = Juego::new(2);
+        juego.agregar_jugador(2, "Jugador 3".to_string());
+        assert_eq!(juego.jugadores.len(), 3);
+    }
+
+    #[test]
+    fn test_eliminar_jugador() {
+        let mut juego = Juego::new(2);
+        juego.eliminar_jugador(1);
+        assert_eq!(juego.jugadores.len(), 1);
+    }
+
+    #[test]
+    fn test_barcos_iniciales() {
+        let  juego = Juego::new(1);
+        let jugador = &juego.jugadores[0];
+        assert_eq!(jugador.barcos.len(), 1);
+    }
+
+    #[test]
+    fn test_abrir_tienda() {
+        let  juego = Juego::new(1);
+        let mut jugadores = juego.jugadores.clone();
+        Juego::abrir_tienda(&mut jugadores, 0, 1);
+        assert_eq!(jugadores[0].barcos.len(), 2);
     }
 }

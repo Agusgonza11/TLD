@@ -6,7 +6,7 @@ use std::{
     collections::HashMap,
     io::{Read, Write},
     net::{TcpListener, TcpStream},
-    sync::{Arc, Mutex},
+    sync::{mpsc, Arc, Mutex},
     thread,
 };
 
@@ -209,7 +209,7 @@ impl Server {
     ///
     /// `Result<(), CustomError>` - Ok si se puede comenzar el juego o Error si no se puede
     pub fn preguntar_comienzo_juego(&self) -> Result<(), CustomError> {
-        if self.conexiones_jugadores.len() < 3 {
+        if self.conexiones_jugadores.len() < 4 {
             println!("Esperando más jugadores para comenzar el juego...");
             self.esperar_jugadores();
             Ok(())
@@ -286,53 +286,113 @@ impl Server {
     /// # Returns
     ///
     /// `()` - No retorna nada
-    pub fn crear_evento_sorpresa(&mut self, jugadores: &mut [Jugador]) {
-        //esperar 2 segundos
-        std::thread::sleep(std::time::Duration::from_secs(2));
-        for connection in self.conexiones_jugadores.values() {
-            let mut connection = connection.lock().unwrap();
-            let mensaje_serializado = serde_json::to_string(&Mensaje::EventoSorpresa).unwrap();
-            Server::enviar_mensaje(&mut connection, mensaje_serializado.as_bytes().to_vec())
-                .unwrap();
+    pub fn crear_evento_sorpresa(&mut self, jugadores: &mut [Jugador]) -> Result<(), CustomError> {
+        //vector perdedores
+        let mut perdedores: Vec<usize> = vec![];
+        let (tx, rx) = mpsc::channel();
+        let mut handles = vec![];
+
+        for (player_id, jugador) in &self.conexiones_jugadores {
+            let jugador = Arc::clone(jugador);
+            let tx = tx.clone();
+            let player_id = *player_id;
+            println!(
+                "Enviando mensaje de evento sorpresa al jugador {}",
+                player_id
+            ); // Debugging print
+
+            let handle = thread::spawn(move || {
+                let mut jugador = jugador.lock().unwrap();
+                let mensaje_serializado = serde_json::to_string(&Mensaje::EventoSorpresa).unwrap();
+                if let Err(e) =
+                    Server::enviar_mensaje(&mut jugador, mensaje_serializado.as_bytes().to_vec())
+                {
+                    eprintln!("Error enviando mensaje al jugador {}: {:?}", player_id, e);
+                    return;
+                }
+
+                let mut buffer = [0; 512];
+                match jugador.read(&mut buffer) {
+                    Ok(bytes_read) => {
+                        let respuesta = String::from_utf8_lossy(&buffer[..bytes_read])
+                            .trim()
+                            .to_string();
+                        tx.send((player_id, respuesta)).unwrap();
+                    }
+                    Err(_) => {
+                        eprintln!("Error");
+                    }
+                }
+            });
+
+            handles.push(handle);
         }
 
         let mut primero = None;
+        let mut remaining_players = self.conexiones_jugadores.len();
 
-        for (player_id, connection) in &self.conexiones_jugadores {
-            let mut connection = connection.lock().unwrap();
-            let mut buffer = [0; 512];
-            let bytes_read = connection.read(&mut buffer).unwrap();
-            let respuesta = String::from_utf8_lossy(&buffer[..bytes_read])
-                .trim()
-                .to_string();
-
+        while let Ok((player_id, respuesta)) = rx.recv() {
+            remaining_players -= 1;
             if respuesta == "primero" && primero.is_none() {
-                primero = Some(*player_id);
-                jugadores[*player_id].monedas += PREMIO;
-                let mensaje_especial =
-                    serde_json::to_string(&Mensaje::EventoSorpresaResultado(true)).unwrap();
-                Server::enviar_mensaje(&mut connection, mensaje_especial.as_bytes().to_vec())
-                    .unwrap();
-            } else {
-                let mensaje_especial =
-                    serde_json::to_string(&Mensaje::EventoSorpresaResultado(false)).unwrap();
-                Server::enviar_mensaje(&mut connection, mensaje_especial.as_bytes().to_vec())
-                    .unwrap();
-            }
-        }
-
-        if let Some(p) = primero {
-            let posiciones = CORDENADAS_BOMBA;
-            for posicion in posiciones {
-                let self_clone = self.clone();
-                let mut conexion = self_clone
+                primero = Some(player_id);
+                jugadores[player_id].monedas += PREMIO;
+                let mut jugador = self
                     .conexiones_jugadores
-                    .get(&p)
+                    .get(&player_id)
                     .unwrap()
                     .lock()
                     .unwrap();
-                Juego::procesar_ataque(*posicion, p, jugadores, self, &mut conexion);
+                let mensaje_serializado =
+                    serde_json::to_string(&Mensaje::EventoSorpresaResultado(true)).unwrap();
+                Server::enviar_mensaje(&mut jugador, mensaje_serializado.as_bytes().to_vec())
+                    .unwrap();
+            } else {
+                let mut jugador = self
+                    .conexiones_jugadores
+                    .get(&player_id)
+                    .unwrap()
+                    .lock()
+                    .unwrap();
+                perdedores.push(player_id);
+                let mensaje_serializado =
+                    serde_json::to_string(&Mensaje::EventoSorpresaResultado(false)).unwrap();
+                Server::enviar_mensaje(&mut jugador, mensaje_serializado.as_bytes().to_vec())
+                    .unwrap();
+            }
+
+            if remaining_players == 0 {
+                break;
             }
         }
+
+        for handle in handles {
+            if handle.join().is_err() {
+                return Err(CustomError::ErrorThreads);
+            }
+        }
+
+        for jugador in jugadores.iter_mut() {
+            if perdedores.contains(&jugador.id) {
+                let coordenadas = CORDENADAS_BOMBA;
+                jugador.procesar_ataque(coordenadas, self);
+            }
+        }
+
+        Ok(())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+
+    #[test]
+    fn test_server_new() {
+        let server = Server::new().unwrap();
+        assert_eq!(server.jugadores_conectados, 0);
+    }
+
+
+   
 }

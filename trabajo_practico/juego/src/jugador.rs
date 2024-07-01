@@ -28,14 +28,12 @@ impl Jugador {
     /// `Jugador` - Jugador creado
     pub fn new(id: usize, nombre: String, mapa: &mut Mapa) -> Jugador {
         let mut barcos = Vec::new();
-        let mut id_actual = 0;
 
+        // Utilizar enumerate para manejar el contador explícitamente
         let tamaños_barcos: Vec<usize> = vec![1];
-        for tamaño in tamaños_barcos.into_iter(){
+        for (id_actual, &tamaño) in tamaños_barcos.iter().enumerate() {
             let vec_posiciones = mapa.obtener_posiciones_libres_contiguas(id.to_string(), tamaño);
-            let id_barco = id_actual;
-            id_actual += 1;
-            barcos.push(Barco::new(id_barco, tamaño, vec_posiciones));
+            barcos.push(Barco::new(id_actual, tamaño, vec_posiciones));
         }
 
         Jugador {
@@ -47,6 +45,7 @@ impl Jugador {
             mapa: mapa.clone(),
         }
     }
+
     /// Función que envía las instrucciones al jugador
     ///
     /// # Args
@@ -76,15 +75,12 @@ impl Jugador {
     ///
     ///
     pub fn manejar_turno(&mut self, server: &Server) {
-        if self.barcos.is_empty(){
+        if self.barcos.is_empty() {
             return;
         }
-        let _ = self.mapa.enviar_tablero(
-            self.id.to_string(),
-            server,
-            &self.barcos,
-            self.monedas,
-        );
+        let _ = self
+            .mapa
+            .enviar_tablero(self.id.to_string(), server, &self.barcos, self.monedas);
     }
     /// Función que permite al jugador agregar un barco al tablero
     ///
@@ -171,12 +167,12 @@ impl Jugador {
         for barco in &mut self.barcos {
             if barco.posiciones.contains(&coordenadas_ataque) {
                 barco.posiciones.retain(|&pos| pos != coordenadas_ataque);
-    
+
                 if barco.posiciones.is_empty() {
                     barco.estado = EstadoBarco::Hundido;
                     puntos += 15;
                     monedas += 100;
-    
+
                     let conexion = server
                         .conexiones_jugadores
                         .get(&self.id)
@@ -222,17 +218,17 @@ impl Jugador {
                 }
             }
         }
-    
+
         self.barcos
             .retain(|barco| barco.estado != EstadoBarco::Hundido);
-    
+
         for coordenadas in barcos_hundidos {
             self.mapa.marcar_hundido(coordenadas);
         }
-    
+
         (puntos, monedas)
     }
-    
+
     /// Función que envía un mensaje al servidor
     ///
     /// # Args
@@ -253,4 +249,52 @@ impl Jugador {
         result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
+
+    pub fn esta_vivo(&self) -> bool {
+        !self.barcos.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mapa::Mapa;
+    
+    
+    #[test]
+    fn test_new_jugador(){
+        let jugador = Jugador::new(1, "Jugador 1".to_string(), &mut Mapa::new());
+        assert_eq!(jugador.id, 1);
+        assert_eq!(jugador.nombre_usuario, "Jugador 1");
+        assert_eq!(jugador.barcos.len(), 1);
+        assert_eq!(jugador.puntos, 0);
+        assert_eq!(jugador.monedas, 500);
+    }
+
+    #[test]
+    fn test_agregar_barco(){
+        let mut jugador = Jugador::new(1, "Jugador 1".to_string(), &mut Mapa::new());
+        jugador.agregar_barco(2);
+        assert_eq!(jugador.barcos.len(), 2);
+    }
+
+    #[test]
+    fn test_obtener_barco(){
+        let mut jugador = Jugador::new(1, "Jugador 1".to_string(), &mut Mapa::new());
+        jugador.agregar_barco(2);
+        let barco = jugador.obtener_barco(1);
+        assert_eq!(barco.tamaño, 2);
+    }
+
+
+
+    #[test]
+    fn test_actualizar_posicion_barco(){
+        let mut jugador = Jugador::new(1, "Jugador 1".to_string(), &mut Mapa::new());
+        jugador.agregar_barco(2);
+        jugador.actualizar_posicion_barco(vec![(0, 0), (0, 1)], 0);
+        assert_eq!(jugador.barcos[0].posiciones, vec![(0, 0)]);
+    }
+
+
 }

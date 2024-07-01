@@ -13,12 +13,12 @@ pub enum CustomError {
     LongitudNombreInvalida,
     ErrorEnviarMensaje,
     ErrorSerializacion,
-    ErrorMostrandoRanking,
     ErrorRecibiendoMensaje,
     ErrorRankingVacio,
     ErrorCoordenadasIncorrectas,
     ErrorDeserealizandoMensaje,
     ErrorThreads,
+    ErrorMostrandoRanking,
 }
 
 impl fmt::Display for CustomError {
@@ -35,7 +35,6 @@ impl fmt::Display for CustomError {
             CustomError::LongitudNombreInvalida => write!(f, "Error: Longitud de nombre invalida"),
             CustomError::ErrorEnviarMensaje => write!(f, "Error al enviar el mensaje"),
             CustomError::ErrorSerializacion => write!(f, "Error al serializar"),
-            CustomError::ErrorMostrandoRanking => write!(f, "Error al mostrar el ranking"),
             CustomError::ErrorRecibiendoMensaje => write!(f, "Error al recibir el mensaje"),
             CustomError::ErrorRankingVacio => write!(f, "El ranking esta vacio"),
             CustomError::ErrorCoordenadasIncorrectas => write!(f, "Error: Coordenadas incorrectas"),
@@ -43,6 +42,7 @@ impl fmt::Display for CustomError {
                 write!(f, "Error al deserealizar el mensaje")
             }
             CustomError::ErrorThreads => write!(f, "Error en los threads"),
+            CustomError::ErrorMostrandoRanking => write!(f, "Error mostrando ranking"),
         }
     }
 }
