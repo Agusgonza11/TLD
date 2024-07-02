@@ -19,6 +19,7 @@ pub enum CustomError {
     ErrorDeserealizandoMensaje,
     ErrorThreads,
     ErrorMostrandoRanking,
+    ErrorCompraBarco,
 }
 
 impl fmt::Display for CustomError {
@@ -43,6 +44,7 @@ impl fmt::Display for CustomError {
             }
             CustomError::ErrorThreads => write!(f, "Error en los threads"),
             CustomError::ErrorMostrandoRanking => write!(f, "Error mostrando ranking"),
+            CustomError::ErrorCompraBarco => write!(f, "Error en la compra del barco"),
         }
     }
 }

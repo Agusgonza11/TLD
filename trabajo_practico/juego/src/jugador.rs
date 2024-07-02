@@ -12,6 +12,8 @@ pub struct Jugador {
     pub barcos: Vec<Barco>,
     pub puntos: usize,
     pub monedas: usize,
+    pub ha_perdido: bool, 
+
 }
 
 impl Jugador {
@@ -29,7 +31,6 @@ impl Jugador {
     pub fn new(id: usize, nombre: String, mapa: &mut Mapa) -> Jugador {
         let mut barcos = Vec::new();
 
-        // Utilizar enumerate para manejar el contador explícitamente
         let tamaños_barcos: Vec<usize> = vec![1];
         for (id_actual, &tamaño) in tamaños_barcos.iter().enumerate() {
             let vec_posiciones = mapa.obtener_posiciones_libres_contiguas(id.to_string(), tamaño);
@@ -43,6 +44,7 @@ impl Jugador {
             puntos: 0,
             monedas: 500,
             mapa: mapa.clone(),
+            ha_perdido: false,
         }
     }
 
@@ -259,10 +261,9 @@ impl Jugador {
 mod tests {
     use super::*;
     use crate::mapa::Mapa;
-    
-    
+
     #[test]
-    fn test_new_jugador(){
+    fn test_new_jugador() {
         let jugador = Jugador::new(1, "Jugador 1".to_string(), &mut Mapa::new());
         assert_eq!(jugador.id, 1);
         assert_eq!(jugador.nombre_usuario, "Jugador 1");
@@ -272,29 +273,25 @@ mod tests {
     }
 
     #[test]
-    fn test_agregar_barco(){
+    fn test_agregar_barco() {
         let mut jugador = Jugador::new(1, "Jugador 1".to_string(), &mut Mapa::new());
         jugador.agregar_barco(2);
         assert_eq!(jugador.barcos.len(), 2);
     }
 
     #[test]
-    fn test_obtener_barco(){
+    fn test_obtener_barco() {
         let mut jugador = Jugador::new(1, "Jugador 1".to_string(), &mut Mapa::new());
         jugador.agregar_barco(2);
         let barco = jugador.obtener_barco(1);
         assert_eq!(barco.tamaño, 2);
     }
 
-
-
     #[test]
-    fn test_actualizar_posicion_barco(){
+    fn test_actualizar_posicion_barco() {
         let mut jugador = Jugador::new(1, "Jugador 1".to_string(), &mut Mapa::new());
         jugador.agregar_barco(2);
         jugador.actualizar_posicion_barco(vec![(0, 0), (0, 1)], 0);
         assert_eq!(jugador.barcos[0].posiciones, vec![(0, 0)]);
     }
-
-
 }

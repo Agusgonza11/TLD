@@ -4,9 +4,7 @@ use libreria::{
 };
 use serde_json;
 use std::{
-    io::{self, Read, Write},
-    net::TcpStream,
-    sync::{Arc, Mutex},
+ io::{self, Read, Write}, net::TcpStream, sync::{Arc, Mutex}
 };
 
 use crate::instruccion::Instruccion;
@@ -64,6 +62,14 @@ impl Cliente {
                         Ok(mensaje) => match mensaje {
                             Mensaje::Registro => {
                                 println!("Ingrese su nombre de usuario: ");
+                                let mut respuesta = String::new();
+                                io::stdin()
+                                    .read_line(&mut respuesta)
+                                    .expect("Error al leer la respuesta.");
+                                self.enviar_respuesta(respuesta.trim())?;
+                            }
+                            Mensaje::NombreEnUso => {
+                                println!("El nombre de usuario ya está en uso. Por favor, ingrese otro nombre: ");
                                 let mut respuesta = String::new();
                                 io::stdin()
                                     .read_line(&mut respuesta)
@@ -129,11 +135,9 @@ impl Cliente {
                             }
 
                             Mensaje::EventoSorpresa => {
-                                //esperar 1 segundo
                                 std::thread::sleep(std::time::Duration::from_secs(1));
                                 println!("¡Un cargamento con recursos apareció de repente! Sé el primero en reclamarlo ingresando: primero");
 
-                                // Leer la respuesta del usuario
                                 let mut respuesta = String::new();
                                 io::stdin()
                                     .read_line(&mut respuesta)
@@ -148,7 +152,7 @@ impl Cliente {
                                 }
                             }
 
-                            Mensaje::MensajeInfoAaque(puntos, monedas) => {
+                            Mensaje::MensajeInfoAtaque(puntos, monedas) => {
                                 if puntos == 0 {
                                     println!(
                                         "Has fallado el ataque, no has ganado puntos ni monedas"
@@ -198,11 +202,11 @@ impl Cliente {
                                 _ => {}
                             },
 
-                            Mensaje::FinPartida(nombre, puntos) => {
-                                println!(
-                                    "Fin de la partida. El jugador {} ha ganado con {} puntos",
-                                    nombre, puntos
-                                );
+                            Mensaje::NotificacionCompra(mensaje, monedas) => {
+                                println!("{} Monedas restantes: {}", mensaje, monedas);
+                            }
+                            Mensaje::Ganaste(puntos) => {
+                                println!("Has ganado con {} puntos", puntos);
                                 break;
                             }
                             _ => {
@@ -274,50 +278,65 @@ impl Cliente {
     ///
     /// `usize` - Puntos ganados por el jugador
     fn abrir_tienda(monedas: usize) -> Result<(Instruccion, usize), CustomError> {
-        let mut monedas_gastadas = 0;
         println!("Opciones para comprar: ");
         println!("(a) Acorazado de 3 casilleros: $300");
-        println!("(b) Buqe de 2 casilleros: $200");
+        println!("(b) Buque de 2 casilleros: $200");
         println!("(c) Fragata de 1 casillero: $100");
         println!("Usted cuenta con ${}", monedas);
+        
         let mut compra = String::new();
         io::stdin()
             .read_line(&mut compra)
             .expect("Error al leer la respuesta.");
+    
         let mut exitosa = true;
-        let mut tipo_barco = 0;
+        let tipo_barco;
+        let monedas_gastadas;
+    
         match compra.trim() {
             "a" => {
                 if monedas < 300 {
-                    exitosa = false
+                    exitosa = false;
+                    monedas_gastadas = 0;
+                    tipo_barco = 0;
+                } else {
+                    monedas_gastadas = 300;
+                    tipo_barco = 3;
                 }
-                monedas_gastadas = 300;
-                tipo_barco = 3;
             }
             "b" => {
                 if monedas < 200 {
-                    exitosa = false
+                    exitosa = false;
+                    monedas_gastadas = 0;
+                    tipo_barco = 0;
+                } else {
+                    monedas_gastadas = 200;
+                    tipo_barco = 2;
                 }
-                monedas_gastadas = 200;
-                tipo_barco = 2;
             }
             "c" => {
                 if monedas < 100 {
-                    exitosa = false
+                    exitosa = false;
+                    monedas_gastadas = 0;
+                    tipo_barco = 0;
+                } else {
+                    monedas_gastadas = 100;
+                    tipo_barco = 1;
                 }
-                monedas_gastadas = 100;
-                tipo_barco = 1;
             }
-            _ => {}
+            _ => {
+                return Err(CustomError::ErrorCompraBarco);
+            }
         }
+    
         if !exitosa {
             println!("No cuenta con el dinero suficiente para comprar ese barco");
-            Ok((Instruccion::Saltar, 0))
-        } else {
-            Ok((Instruccion::Compra(tipo_barco), monedas_gastadas))
+            return Err(CustomError::ErrorCompraBarco);
         }
+    
+        Ok((Instruccion::Compra(tipo_barco), monedas_gastadas))
     }
-
+    
     /// Función que recibe un mensaje del servidor
     ///
     /// # Returns

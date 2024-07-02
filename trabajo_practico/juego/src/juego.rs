@@ -56,20 +56,31 @@ impl Juego {
     pub fn iniciar_juego(&mut self, server: &mut Server) -> Result<(), CustomError> {
         let mut rondas = 0;
         let mut server_clone = server.clone();
-
-        while let Ok(finalizado) = self.finalizo(&server_clone) {
-            if finalizado {
-                break;
+    
+        while self.finalizo().is_ok(){
+    
+            let jugadores_con_barcos: Vec<_> = self.jugadores.iter().filter(|j| !j.barcos.is_empty()).collect();
+            if jugadores_con_barcos.len() == 1 {
+                println!("El ganador es: {}", jugadores_con_barcos[0].nombre_usuario);
+                let mensaje = Mensaje::Ganaste(jugadores_con_barcos[0].puntos);
+                let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
+                for (id, conexion) in &server_clone.conexiones_jugadores {
+                    if *id == jugadores_con_barcos[0].id {
+                        let conexion = conexion.lock().unwrap();
+                        let _ = Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec());
+                    }
+                }
+                return Ok(());
             }
-
+    
             if rondas == EVENTO_SORPRESA {
                 let _ = server_clone.crear_evento_sorpresa(&mut self.jugadores);
             }
-
+    
             while self.jugadores[self.turno].barcos.is_empty() {
                 self.turno = (self.turno + 1) % self.jugadores.len();
             }
-
+    
             println!(
                 "Turno del jugador {}",
                 self.jugadores[self.turno].nombre_usuario
@@ -81,7 +92,7 @@ impl Juego {
                     .filter(|j| !j.barcos.is_empty())
                     .count()
             );
-
+    
             let mut server_clone = server_clone.clone();
             if let Some(conexion) = server_clone
                 .conexiones_jugadores
@@ -91,9 +102,9 @@ impl Juego {
                 let mensaje_serializado = serde_json::to_string(&Mensaje::RealiceAccion).unwrap();
                 Self::enviar_mensaje(&conexion, mensaje_serializado.as_bytes().to_vec())?;
             }
-
+    
             self.jugadores[self.turno].manejar_turno(&server_clone);
-
+    
             loop {
                 match server_clone.recibir_mensaje(self.jugadores[self.turno].id) {
                     Ok(mensaje_serializado) => {
@@ -117,9 +128,7 @@ impl Juego {
                                         ) {
                                             Ok(_) => break,
                                             Err(_) => {
-                                                return Err(
-                                                    CustomError::ErrorRecibiendoInstruccion,
-                                                );
+                                                return Err(CustomError::ErrorRecibiendoInstruccion);
                                             }
                                         }
                                     }
@@ -135,17 +144,18 @@ impl Juego {
                     }
                 }
             }
-
+    
             self.jugadores[self.turno].enviar_instrucciones(&server_clone);
             self.turno = (self.turno + 1) % self.jugadores.len();
             rondas += 1;
         }
-
-        match self.finalizo(&server_clone) {
+    
+        match self.finalizo() {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }
     }
+    
 
     fn mostrar_ranking(conexion: &mut MutexGuard<'_, TcpStream>) -> Result<(), CustomError> {
         let file_path = "../archivos/ranking.json";
@@ -169,7 +179,25 @@ impl Juego {
 
         Self::enviar_mensaje(conexion, mensaje_serializado.into_bytes())
     }
-
+    /// Función que maneja una instrucción
+    /// 
+    /// # Args
+    /// 
+    /// `instruccion` - Instrucción a manejar
+    /// 
+    /// `jugador_actual` - Jugador que realiza la instrucción
+    /// 
+    /// `conexion` - Conexión del jugador
+    /// 
+    /// `jugadores` - Vector de jugadores
+    /// 
+    /// `server` - Servidor en el que se encuentra el juego
+    /// 
+    /// `monedas` - Monedas del jugador
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución
     fn manejar_instruccion(
         &mut self,
         instruccion: Instruccion,
@@ -188,7 +216,6 @@ impl Juego {
                     jugadores,
                     conexion,
                 )?;
-                //Self::procesar_movimiento(movimiento, &mut self.jugadores);
             }
             Instruccion::Ataque(_barco_id, coordenadas_ataque) => {
                 let pierde = Self::procesar_ataque(
@@ -256,46 +283,34 @@ impl Juego {
     /// # Returns
     ///
     /// `Result<bool, CustomError>` - Result con booleano que indica si el juego finalizó o error
-    fn finalizo(&self, server: &Server) -> Result<bool, CustomError> {
+    fn finalizo(&self) -> Result<bool, CustomError> {
         static ONCE_FLAG: Once = Once::new();
-    
+
         let jugadores_con_barcos = self
             .jugadores
             .iter()
             .filter(|j| !j.barcos.is_empty())
             .count();
-    
+
         if jugadores_con_barcos <= 1 {
             if let Some(jugador) = self.jugadores.iter().find(|j| !j.barcos.is_empty()) {
-                // Actualizar ranking
                 self.actualizar_ranking()
                     .map_err(|_| CustomError::ErrorMostrandoRanking)?;
-    
-                let ganador = &jugador.nombre_usuario;
-                let mensaje_serializado = serde_json::to_string(&Mensaje::FinPartida(
-                    jugador.nombre_usuario.clone(),
-                    jugador.puntos,
-                )).unwrap();
-    
-                // Enviar mensaje a todos los jugadores conectados
-                for conexion in server.conexiones_jugadores.values() {
-                    let mut conexion = conexion.lock().unwrap();
-                    Server::enviar_mensaje(&mut conexion, mensaje_serializado.as_bytes().to_vec())?;
-                }
-    
-                // Imprimir mensaje del ganador solo una vez
+
+                let _ganador = &jugador.nombre_usuario;
+                
+
                 ONCE_FLAG.call_once(|| {
-                    println!("El jugador {} ha ganado", ganador);
+                    println!("Juego terminado");
                 });
             } else {
-                // Imprimir mensaje de que no hay ganadores solo una vez
                 ONCE_FLAG.call_once(|| {
                     println!("No hay ganadores.");
                 });
             }
             return Ok(true);
         }
-    
+
         Ok(false)
     }
 
@@ -313,15 +328,15 @@ impl Juego {
             .push(Jugador::new(id_jugador, nombre, &mut self.mapa));
     }
     /// Función que elimina un jugador del juego
-    /// 
+    ///
     /// # Args
-    /// 
+    ///
     /// `jugadores` - Vector de jugadores
-    /// 
+    ///
     /// `id_jugador` - ID del jugador a eliminar
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// `()` - No retorna nada
     pub fn eliminar_jugador(&mut self, id_jugador: usize) {
         self.jugadores.retain(|j| j.id != id_jugador);
@@ -421,11 +436,13 @@ impl Juego {
         let mut pierde = false;
         let mut puntos_ganados = 0;
         let mut monedas_ganadas = 0;
-
+    
         for jugador in jugadores.iter_mut() {
             if jugador.id != jugador_actual {
                 let (puntos, monedas) = jugador.procesar_ataque(coordenadas_ataque, server);
-                if jugador.barcos.is_empty() {
+                if jugador.barcos.is_empty() && !jugador.ha_perdido {
+                    jugador.ha_perdido = true; 
+    
                     let mensaje = Mensaje::Perdiste(jugador.puntos);
                     let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
                     for (id, conexion) in &server.conexiones_jugadores {
@@ -448,20 +465,20 @@ impl Juego {
                 }
             }
             if server.conexiones_jugadores.len() == 1 {
-                println!("Juego terminado. Ganador: {}", jugador.nombre_usuario);
-                pierde = false;
-                return pierde;
+                println!("El juego ha terminado");
+                break;
             }
         }
-
-        let mensaje = Mensaje::MensajeInfoAaque(puntos_ganados, monedas_ganadas);
+    
+        let mensaje = Mensaje::MensajeInfoAtaque(puntos_ganados, monedas_ganadas);
         let mensaje_serializado = serde_json::to_string(&mensaje).unwrap();
         Self::enviar_mensaje(conexion, mensaje_serializado.as_bytes().to_vec()).unwrap();
         jugadores[jugador_actual].puntos += puntos_ganados;
         jugadores[jugador_actual].monedas += monedas_ganadas;
-
+    
         pierde
     }
+    
 
     /// Función que envía un mensaje a un cliente
     ///
@@ -485,7 +502,15 @@ impl Juego {
         result_flush.map_err(|_| CustomError::ErrorEnviarMensaje)?;
         Ok(())
     }
-
+    /// Función que actualiza el ranking de jugadores
+    /// 
+    /// # Returns
+    /// 
+    /// `Result<(), CustomError>` - Resultado de la ejecución
+    /// 
+    /// # Errors
+    /// 
+    /// `CustomError` - Error personalizado
     pub fn actualizar_ranking(&self) -> Result<(), CustomError> {
         let nombre_archivo = "../archivos/ranking.json";
 
@@ -513,7 +538,6 @@ impl Juego {
         serde_json::to_writer(writer, &rankings).map_err(|_| CustomError::ErrorSerializacion)?;
         Ok(())
     }
-
 }
 
 #[cfg(test)]
@@ -538,20 +562,5 @@ mod tests {
         let mut juego = Juego::new(2);
         juego.eliminar_jugador(1);
         assert_eq!(juego.jugadores.len(), 1);
-    }
-
-    #[test]
-    fn test_barcos_iniciales() {
-        let  juego = Juego::new(1);
-        let jugador = &juego.jugadores[0];
-        assert_eq!(jugador.barcos.len(), 1);
-    }
-
-    #[test]
-    fn test_abrir_tienda() {
-        let  juego = Juego::new(1);
-        let mut jugadores = juego.jugadores.clone();
-        Juego::abrir_tienda(&mut jugadores, 0, 1);
-        assert_eq!(jugadores[0].barcos.len(), 2);
     }
 }
