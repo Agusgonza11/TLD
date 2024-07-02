@@ -4,7 +4,9 @@ use libreria::{
 };
 use serde_json;
 use std::{
- io::{self, Read, Write}, net::TcpStream, sync::{Arc, Mutex}
+    io::{self, Read, Write},
+    net::TcpStream,
+    sync::{Arc, Mutex},
 };
 
 use crate::instruccion::Instruccion;
@@ -259,7 +261,8 @@ impl Cliente {
     /// `()` - No retorna nada
     fn mostrar_ranking(ranking: Vec<(String, usize)>) -> Result<(), CustomError> {
         if ranking.is_empty() {
-            return Err(CustomError::ErrorRankingVacio);
+            println!("El ranking está vacío");
+            return Ok(());
         }
         println!("Ranking:");
         for (index, (nombre, puntos)) in ranking.iter().enumerate() {
@@ -283,16 +286,16 @@ impl Cliente {
         println!("(b) Buque de 2 casilleros: $200");
         println!("(c) Fragata de 1 casillero: $100");
         println!("Usted cuenta con ${}", monedas);
-        
+
         let mut compra = String::new();
         io::stdin()
             .read_line(&mut compra)
             .expect("Error al leer la respuesta.");
-    
+
         let mut exitosa = true;
         let tipo_barco;
         let monedas_gastadas;
-    
+
         match compra.trim() {
             "a" => {
                 if monedas < 300 {
@@ -328,15 +331,15 @@ impl Cliente {
                 return Err(CustomError::ErrorCompraBarco);
             }
         }
-    
+
         if !exitosa {
             println!("No cuenta con el dinero suficiente para comprar ese barco");
             return Err(CustomError::ErrorCompraBarco);
         }
-    
+
         Ok((Instruccion::Compra(tipo_barco), monedas_gastadas))
     }
-    
+
     /// Función que recibe un mensaje del servidor
     ///
     /// # Returns

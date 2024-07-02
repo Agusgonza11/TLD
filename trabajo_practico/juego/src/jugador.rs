@@ -12,8 +12,7 @@ pub struct Jugador {
     pub barcos: Vec<Barco>,
     pub puntos: usize,
     pub monedas: usize,
-    pub ha_perdido: bool, 
-
+    pub ha_perdido: bool,
 }
 
 impl Jugador {

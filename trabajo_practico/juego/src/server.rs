@@ -70,10 +70,10 @@ impl Server {
             let mut stream = stream.map_err(|_| CustomError::ErrorAceptandoConexion)?;
             self_clone.jugadores_conectados += 1;
             println!("Nuevo jugador conectado");
-    
+
             let mensaje_serializado = serde_json::to_string(&Mensaje::Registro).unwrap();
             Self::enviar_mensaje(&mut stream, mensaje_serializado.as_bytes().to_vec()).unwrap();
-    
+
             let mut buffer = [0; 2048];
             loop {
                 let bytes_read = stream
@@ -82,20 +82,26 @@ impl Server {
                 let nombre_usuario = String::from_utf8_lossy(&buffer[..bytes_read])
                     .trim()
                     .to_string();
-                
-                if !self_clone.nombres_jugadores.values().any(|name| name == &nombre_usuario) {
-                    println!("Jugador conectado con el nombre de usuario: {}", nombre_usuario);
+
+                if !self_clone
+                    .nombres_jugadores
+                    .values()
+                    .any(|name| name == &nombre_usuario)
+                {
+                    println!(
+                        "Jugador conectado con el nombre de usuario: {}",
+                        nombre_usuario
+                    );
                     self_clone.handle_client(stream, nombre_usuario)?;
                     break;
                 }
-    
+
                 let mensaje_serializado = serde_json::to_string(&Mensaje::NombreEnUso).unwrap();
                 Self::enviar_mensaje(&mut stream, mensaje_serializado.as_bytes().to_vec()).unwrap();
             }
         }
         Ok(())
     }
-    
 
     /// Función que maneja al cliente
     ///
@@ -216,7 +222,7 @@ impl Server {
     ///
     /// `Result<(), CustomError>` - Ok si se puede comenzar el juego o Error si no se puede
     pub fn preguntar_comienzo_juego(&self) -> Result<(), CustomError> {
-        if self.conexiones_jugadores.len() < 4 {
+        if self.conexiones_jugadores.len() < 3 {
             println!("Esperando más jugadores para comenzar el juego...");
             self.esperar_jugadores();
             Ok(())
